@@ -1,0 +1,23 @@
+<!doctype html>
+<html>
+<head>
+	<style>
+		#vim {
+			position:absolute;
+			left: 9%;
+			height: 80%;
+			width: 80%;
+			border-radius: 4px;
+		}
+	</style>
+</head>
+<body>
+	<div id='vim'></div>
+	<script src='/bundle.js'></script>
+	<script>
+		vim.edit({
+			el: document.getElementById('vim')
+		});
+	</script>
+</body>
+</html>
