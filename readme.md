@@ -1,6 +1,8 @@
 #js-vim-embed
 
-Embed vim on any web page
+Embed js-vim on any web page
+
+##Usage
 
 ```html
 <!DOCYPE html>
@@ -16,3 +18,6 @@ Embed vim on any web page
 </body>
 </html>
 ```
+
+##TODO
+
