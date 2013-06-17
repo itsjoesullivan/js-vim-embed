@@ -19,5 +19,3 @@ Embed js-vim on any web page
 </html>
 ```
 
-##TODO
-
