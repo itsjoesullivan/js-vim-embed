@@ -1,0 +1,23 @@
+{
+  "name": "js-vim-embed",
+  "version": "0.0.0",
+  "description": "Embed vim on any web site",
+  "main": "index.js",
+  "scripts": {
+    "test": "mocha"
+  },
+	"dependencies": {
+		"js-vim": "*"
+	},
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/itsjoesullivan/js-vim-embed.git"
+  },
+  "keywords": [
+    "vim"
+  ],
+  "author": "Joe Sullivan",
+  "license": "BSD",
+  "readmeFilename": "readme.md",
+  "gitHead": "83793e57668e65ee9e7c7e797fa4169d398e9dc4"
+}
