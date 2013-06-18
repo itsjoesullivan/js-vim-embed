@@ -1,6 +1,6 @@
 {
   "name": "js-vim-embed",
-  "version": "0.1.0",
+  "version": "0.1.1",
   "description": "Embed vim on any web site",
   "main": "index.js",
   "scripts": {
