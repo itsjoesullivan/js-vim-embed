@@ -1,6 +1,7 @@
 <!doctype html>
 <html>
 <head>
+	<link href='http://fonts.googleapis.com/css?family=Inconsolata:400,700' rel='stylesheet' type='text/css'>
 	<style>
 		body {
 			background-color: #ccc;
@@ -12,6 +13,8 @@
 			width: 80%;
 			border-radius: 4px;
 			color: #f4f4f4;
+			font-weight: 400;
+			font-family: 'Inconsolata', sans-serif !important;
 		}
 		#vim .selection {
 			background-color: #555;
@@ -43,12 +46,40 @@
 	</style>
 </head>
 <body>
-	<div id='vim'></div>
+	<pre id='vim'>js-vim-embed is an embeddable implementation of js-vim
+
+To get started, the API is almost as simple as that of the ace editor:
+
+&lt;pre id='vim'>&lt;/pre>
+&lt;script src='/vim.js'>&lt;script>
+&lt;script>
+	vim.edit({
+		el: document.getElementById('vim')
+	});
+&lt;script>
+
+js-vim itself a fairly robust implementation of vim:
+
+	- motions
+		- h, j, k, l
+		- {n}f{m}
+		- /foo
+</pre>
+
 	<script src='/bundle.js'></script>
 	<script>
+		var el = document.getElementById('vim'),
+			text = el.innerHTML;
+			el.innerHTML = '';
+
 		vim.edit({
 			el: document.getElementById('vim')
 		});
+
+		vim.text(text);
+
+		vim.exec('G')
+		vim.exec('$')
 	</script>
 </body>
 </html>
