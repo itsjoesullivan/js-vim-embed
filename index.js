@@ -1,4 +1,4 @@
-var Vim = require('../js-vim/index'),
+var Vim = require('js-vim/index'),
 	View = require('./lib/view'),
 	Keys = require('./lib/keys');
 
