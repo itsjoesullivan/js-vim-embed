@@ -1,1 +1,6 @@
-browserify index.js > bundle.js
+printf "%s" "module.exports = '" > style.css
+printf "%s" `sass style.scss | tr -d '\r\n'` >> style.css
+printf "%s" "';" >> style.css
+browserify index.js > vim.js
+
+#uglifyjs vim.js > vim.min.js
