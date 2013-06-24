@@ -19,6 +19,8 @@ var init = function(obj) {
 		elView = new ElView({
 			el: obj.el,
 		});
+		vim.view.lines = elView.dimensions[1];
+		vim.view.cols = elView.dimensions[0];
 		if(text.length) {
 			vim.curDoc.text(text);
 			vim.exec('G')
@@ -31,6 +33,7 @@ var init = function(obj) {
 //	var dimensions = getDimensions();
 //	vim.view.cols = dimensions.cols;
 //	vim.view.lines = dimensions.lines;
+
 
 	vim.view.on('change', function() {
 		elView.write(vim.view.getText());
