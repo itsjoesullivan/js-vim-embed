@@ -1,5 +1,5 @@
 var Vim = require('js-vim'),
-	View = require('./lib/view'),
+	ElView = require('./lib/View'),
 	Keys = require('./lib/keys');
 
 require('./lib/style');
@@ -9,15 +9,15 @@ var init = function(obj) {
 
 	//Ok
 	window.vim = new Vim();
+	var elView;
 
 	//Hmm.
 	vim.edit = function(obj) {
 		if(!obj || typeof obj !== 'object' || !('el' in obj)) throw "vim.edit required { el: <HTMLElement> }";
 		var text = obj.el.innerHTML;
 		obj.el.innerHTML = '';
-		vim.view = new View({
+		elView = new ElView({
 			el: obj.el,
-			vim: vim
 		});
 		if(text.length) {
 			vim.curDoc.text(text);
@@ -26,6 +26,16 @@ var init = function(obj) {
 		}
 	
 	};
+
+	//Get dimensions
+//	var dimensions = getDimensions();
+//	vim.view.cols = dimensions.cols;
+//	vim.view.lines = dimensions.lines;
+
+	vim.view.on('change', function() {
+		elView.write(vim.view.getText());
+	});
+	
 
 	
 
