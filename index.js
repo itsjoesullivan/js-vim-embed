@@ -1,17 +1,21 @@
+//js implementation of vim
 var Vim = require('js-vim'),
+	//browser vim view
 	ElView = require('./lib/View'),
+	//browser key handler
 	Keys = require('./lib/keys');
 
+//janky style...
 require('./lib/style');
 
 /* set up */
 var init = function(obj) {
 
-	//Ok
+	//Instanciate
 	window.vim = new Vim();
 	var elView;
 
-	//Hmm.
+	//Give vim a special edit function
 	vim.edit = function(obj) {
 		if(!obj || typeof obj !== 'object' || !('el' in obj)) throw "vim.edit required { el: <HTMLElement> }";
 		var text = obj.el.innerHTML;
@@ -29,18 +33,9 @@ var init = function(obj) {
 	
 	};
 
-	//Get dimensions
-//	var dimensions = getDimensions();
-//	vim.view.cols = dimensions.cols;
-//	vim.view.lines = dimensions.lines;
-
-
 	vim.view.on('change', function() {
 		elView.write(vim.view.getText());
 	});
-	
-
-	
 
 	//Set up keys
 	keys = new Keys();
