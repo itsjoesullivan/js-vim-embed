@@ -91,20 +91,24 @@ function gutterTemplate(index) {
 }
 
 },{}],2:[function(require,module,exports){
+//js implementation of vim
 var Vim = require('js-vim'),
+	//browser vim view
 	ElView = require('./lib/View'),
+	//browser key handler
 	Keys = require('./lib/keys');
 
+//janky style...
 require('./lib/style');
 
 /* set up */
 var init = function(obj) {
 
-	//Ok
+	//Instanciate
 	window.vim = new Vim();
 	var elView;
 
-	//Hmm.
+	//Give vim a special edit function
 	vim.edit = function(obj) {
 		if(!obj || typeof obj !== 'object' || !('el' in obj)) throw "vim.edit required { el: <HTMLElement> }";
 		var text = obj.el.innerHTML;
@@ -122,18 +126,9 @@ var init = function(obj) {
 	
 	};
 
-	//Get dimensions
-//	var dimensions = getDimensions();
-//	vim.view.cols = dimensions.cols;
-//	vim.view.lines = dimensions.lines;
-
-
 	vim.view.on('change', function() {
 		elView.write(vim.view.getText());
 	});
-	
-
-	
 
 	//Set up keys
 	keys = new Keys();
@@ -225,9 +220,6 @@ Keys.prototype.listen = function(obj) {
 		this.fn(key);
 	}.bind(this));
 };
-
-
-
 
 },{"../components/component-mousetrap":7}],6:[function(require,module,exports){
 module.exports = '.vim-container{margin:0;padding:0;position:relative;height:100%;width:100%;border-radius:4px;color:#f4f4f4;background-color:#111;font-size:14px;font-family:"Courier New", Courier, monospace}.vim-container pre,.vim-container span{font-size:inherit}.vim-container .selection{background-color:#555}.vim-container .selection.cursor{background-color:#888;color:#333}.vim-container .gutter{color:#ca792d;font-weight:700}.vim-container .blank{color:#4a39de;font-weight:700}.vim-container .var{color:#c0bb31}';
@@ -1354,7 +1346,13 @@ Doc = function(obj) {
 
   this._text = '';
   this._lines = [];
-  this._undo = [];
+	this.undo.add({
+		text: '',
+		cursor: {
+			char: 0,
+			line: 0
+		}
+	});
 
   this.selecting = false; //The document behaves differently when navigating vs. selecting
   this.yanking = false; //'yanking' sub-mode
@@ -1381,25 +1379,11 @@ Doc.prototype.last = function(k, v) {
   }
   return _lasts[k];
 };
-
-var Undo = function() {
-  this._undos = [];
-};
-Undo.prototype.add = function(patch) {
-  this._undos.unshift(patch);
-};
-Undo.prototype.get = function() {
-  return this._undos[0];
-};
-
-Undo.prototype.apply = function(vim) {
-  var lastChange = this._undos.shift();
-  var curText = vim.curDoc.text();
-  var oldText = vim.dmp.patch_apply(lastChange, curText)[0];
-  vim.curDoc.text(oldText)
-};
+var Undo = require('./Undo');
 
 Doc.prototype.undo = new Undo();
+
+
 
 
 
@@ -1422,7 +1406,7 @@ Doc.prototype.set = function(k, v) {
 
 //Getter / setter
 Doc.prototype.text = function(text) {
-  if (text) {
+  if (text || text === '') {
     if (typeof text === 'string') {
       this._text = text;
       this._lines = this._text.split('\n');
@@ -1704,7 +1688,7 @@ function isRange(range) {
 module.exports = Doc;
 
 })()
-},{"./Cursor":13,"./Event":14}],8:[function(require,module,exports){
+},{"./Cursor":13,"./Event":14,"./Undo":15}],8:[function(require,module,exports){
 /*!
  * js-vim
  * Copyright(c) 2013 Joe Sullivan <itsjoesullivan@gmail.com>
@@ -1737,6 +1721,7 @@ Vim = function(obj) {
     vim: this
   });
 
+
   //Instanciate parser
   this.parser = new CommandParser();
 
@@ -1766,6 +1751,9 @@ Vim = function(obj) {
 
   //Keys typed. When typing :q, before you press q, keyBuffer reads ":"
   this.keyBuffer = '';
+
+  //A history of keys typed which is cleared at different intervals.
+  this.keyHistory = '';
 
   //Create initial document
   var doc = new Doc();
@@ -1871,6 +1859,7 @@ Vim.prototype.mode = function(name) {
 
 
 /** set/get registers
+ * TODO: do this as a set/get thing.
 
 */
 Vim.prototype.register = function(k, v) {
@@ -1890,7 +1879,11 @@ Vim.prototype.register = function(k, v) {
     var val;
     if (num) {
       val = this._numRegistry[k];
-    } else {
+    } else if(k === '%') {
+		if('path' in this.curDoc && typeof this.curDoc.path === 'string') {
+			return /(?:\/|^)([^\/]*)$/.exec(this.curDoc.path)[1];
+		}	
+	} else {
       val = this._registry[k];
     }
     if (_(val).isArray()) val = val.slice(0);
@@ -1920,6 +1913,12 @@ Vim.prototype.exec = function(newCommand) {
 
   //Grab what's left in the buffer
   this.keyBuffer += newCommand;
+
+  //Keep track of top-level keys
+  if(this.execDepth === 1) {
+    this.keyHistory += newCommand;
+  }
+
   command = this.keyBuffer;
   //TODO change triggers in order
   if (this.execDepth < 2) {
@@ -2039,9 +2038,23 @@ Vim.prototype.exec = function(newCommand) {
     this.trigger('change:keyBuffer', command);
     this.trigger('exec', command)
   }
+
+  this.curChar = this.curDoc.getRange(this.curDoc.selection()).substring(0, 1);
   this.execDepth--;
 
 };
+
+Vim.prototype.addUndoState = function() {
+	var pos = this.curDoc.cursor.position();
+	var result = this.curDoc.undo.add({
+		text: this.curDoc.text(),
+		cursor: pos,
+		keys: this.keyHistory
+	});
+	if(result) this.keyHistory = '';
+	return result;
+};
+
 
 Vim.prototype.add = function(doc) {
 	//Add a doc
@@ -2091,7 +2104,7 @@ Vim.prototype.Doc = Doc;
 
 module.exports = Vim;
 
-},{"./Doc":12,"./View":15,"./modes/insert":9,"./modes/command":16,"./modes/search":10,"./modes/visual":11,"set":17,"underscore":18,"js-vim-command":19,"diff_match_patch":20}],18:[function(require,module,exports){
+},{"./Doc":12,"./View":16,"./modes/insert":9,"./modes/command":17,"./modes/search":10,"./modes/visual":11,"set":18,"underscore":19,"js-vim-command":20,"diff_match_patch":21}],19:[function(require,module,exports){
 (function(){//     Underscore.js 1.4.4
 //     http://underscorejs.org
 //     (c) 2009-2013 Jeremy Ashkenas, DocumentCloud Inc.
@@ -3379,7 +3392,63 @@ module.exports.prototype.trigger = function(name, arg1, arg2 /** ... */) {
   return this;
 
 };
-},{}],19:[function(require,module,exports){
+},{}],15:[function(require,module,exports){
+var Undo = module.exports = function() {
+	this._history = [];
+	this.position = 0;
+};
+
+/** Add a state
+ *
+ * N.B.: this.position can use some conceptual explanation.
+ * At its root, position is the state that you are presently in.
+ * Undo.add is not used when you have completed a change, but when you are about to initiate a change. Therefore it's appropriate that insert the state at your current position, then increment position into a state that is not defined in _history.
+ */
+Undo.prototype.add = function(ev) {
+
+	//Don't add additional identical states.
+	if(this.position && typeof ev !== 'string' && 'cursor' in ev && 'text' in ev) {
+			var current = this._history.slice(this.position-1,this.position)[0];
+			var next = this._history.slice(this.position,this.position+1);
+			next = next.length ? next[0] : false;
+			if(areSame(ev,current) || (next && areSame(ev,next))) {
+				return;
+			}
+	}
+
+	this._history.splice(this.position);
+	this._history.push(ev);
+	this.position++;
+	return true;
+};
+
+function areSame(ev1,ev2) {
+	return (ev1.text === ev2.text);
+}
+
+/** Retrieve a state and move the current "position" to there
+ */
+Undo.prototype.get = function(index) {
+	if(index < 0 || index >= this._history.length) return;
+	var state = this._history.slice(index,index+1)[0];	
+	this.position = index;
+	return state;
+};
+
+/** Retrieve the previous state
+ */
+Undo.prototype.last = function() {
+	return this.get(this.position-1);
+};
+
+/** Retrieve the next state
+ */
+Undo.prototype.next = function() {
+	return this.get(this.position+1);
+};
+
+
+},{}],20:[function(require,module,exports){
 var Parser = function() {};
 
 /** Parse a command
@@ -3483,7 +3552,7 @@ Parser.prototype.getLastCount = function(command) {
 
 module.exports = Parser;
 
-},{}],20:[function(require,module,exports){
+},{}],21:[function(require,module,exports){
 (function(){/**
  * Diff Match and Patch
  *
@@ -5628,7 +5697,7 @@ exports['DIFF_INSERT'] = DIFF_INSERT;
 exports['DIFF_EQUAL'] = DIFF_EQUAL;
 
 })()
-},{}],17:[function(require,module,exports){
+},{}],18:[function(require,module,exports){
 var Event = require('./lib/event')
 
 var Set = module.exports = function() {}
@@ -5650,7 +5719,7 @@ Set.prototype.get = function(k) {
 	return this[k]
 };
 
-},{"./lib/event":21}],13:[function(require,module,exports){
+},{"./lib/event":22}],13:[function(require,module,exports){
 var Event = require('./Event');
 
 var Cursor = function(obj) {
@@ -5711,18 +5780,24 @@ Cursor.prototype.position = function() {
 
 module.exports = Cursor;
 
-},{"./Event":14}],15:[function(require,module,exports){
+},{"./Event":14}],16:[function(require,module,exports){
 
 var _ = require('underscore'),
 	Set = require('set');
 
 var mauve = require('mauve');
 
+//var rainbow = require('./3rd/rainbow/js/rainbow.js');
+//require('./3rd/rainbow/js/language/javascript.js')(rainbow);
+
 mauve.set({
 	'idle': '#0000ff',
 	'gutter': '#d75f00',
 	'cursor': '/#555',
-	'status':'bold'
+	'status':'bold',
+	'entity.function': '#dc3',
+	'storage': "#21F",
+	'function.anonymous': '#1F1'
 });
 
 /*
@@ -5793,7 +5868,14 @@ View.prototype.refreshStatusLine = function() {
 };
 
 View.prototype.getText = function() {
-	return '' + this.getArray().join('\n');
+	var text = this.getArray().join('\n');
+
+	//Do 
+	/*rainbow.color(text,'javascript', function(newText) {
+		text = newText;
+	});*/
+
+	return text;
 };
 
 
@@ -5983,7 +6065,7 @@ View.prototype.renderLine = function(text,index,misc) {
 
 
 
-},{"underscore":18,"set":17,"mauve":22}],21:[function(require,module,exports){
+},{"underscore":19,"set":18,"mauve":23}],22:[function(require,module,exports){
 module.exports = function() {};
 
 /** 
@@ -6042,7 +6124,7 @@ module.exports.prototype.trigger = function(name, arg1, arg2 /** ... */) {
   return this;
 
 };
-},{}],16:[function(require,module,exports){
+},{}],17:[function(require,module,exports){
 var _ = require('underscore');
 
 module.exports = {
@@ -6074,6 +6156,7 @@ module.exports = {
 
 	*/
 	'/^{operator}{count}{motion}$/': function(operator, count, motion) {
+			this.addUndoState();
 
 		var visualMode = 'v';
 
@@ -6200,11 +6283,14 @@ module.exports = {
 	'/\\^/': function(keys,vim) {
 		this.exec('0');
 		var doc = this.curDoc;
-		var point = doc.find(/(\S)/g);
-		if(point) {
-			doc.cursor.line(point.line);
-			doc.cursor.char(point.char);
-		}
+        if (this.curChar.match(/(\S)/g) === null) {
+            // if the first character is whitespace, seek another
+            var point = doc.find(/(\S)/g);
+            if(point) {
+                doc.cursor.line(point.line);
+                doc.cursor.char(point.char);
+            }
+        }
 	},
 
 
@@ -6366,17 +6452,26 @@ module.exports = {
 
 //Insert mode
 	'/^(i|s|S)/': function(keys,vim) {
+		if(this.execDepth === 1) {
+			this.addUndoState();
+		}
 		//this.exec('h');
 		if(!this.curDoc._lines.length) { this.curDoc._lines.push(''); }
 		this.mode('insert');
 	},
 
 	'/^(A)/': function(keys,vim) {
+		if(this.execDepth === 1) {
+			this.addUndoState();
+		}
 		this.exec('$');
 		this.exec('a');
 	},
 
 	'/^(I)/': function(keys,vim) {
+		if(this.execDepth === 1) {
+			this.addUndoState();
+		}
 		this.exec('0');
 		this.exec('i');
 	},
@@ -6418,11 +6513,17 @@ module.exports = {
 	},
 
 	'/^o$/': function(keys,vim) {
+		if(this.execDepth === 1) {
+			this.addUndoState();
+		}
 		this.exec('A');
 		this.exec('\n');
 	},
 
 	'/^O$/': function(keys,vim) {
+		if(this.execDepth === 1) {
+			this.addUndoState();
+		}
 			this.exec('0');
 			this.exec('i');
 			this.exec('\n');
@@ -6431,12 +6532,18 @@ module.exports = {
 			this.exec('i');
 	},
 	'/^a$/': function(keys,vim) {
+		if(this.execDepth === 1) {
+			this.addUndoState();
+		}
 		this.exec('i');
 		var doc = this.curDoc;
 		doc.cursor.char(doc.cursor.char()+1);
 	},
 
 	'/^([1-9]+[0-9]*)?(yy|cc|dd)$/': function(keys, vim, match) { //number
+		if(this.execDepth === 1) {
+			this.addUndoState();
+		}
 		var start = this.curDoc.cursor.position();
 
 		this.exec('0');
@@ -6479,7 +6586,7 @@ module.exports = {
 
 
 	/* Set current register */
-	'/^"([a-z])$/': function(keys, vim, match) {
+	'/^"([a-z%\.\-_\"#])$/': function(keys, vim, match) {
 		this.currentRegister = match[1];
 	},
 
@@ -6487,7 +6594,7 @@ module.exports = {
 	/* paste after cursor */
 	'/^(p|P)/': function(keys,vim,match) {
 		var P = match[1] === 'P';
-		var reg = this.register(0);
+		var reg = this.register(this.currentRegister || 0);
 
 		//Don't execute nothing
 		if(!reg || !reg.length) return;
@@ -6580,6 +6687,9 @@ module.exports = {
 
 	/* Commands that can be stupidly executed N times, instead of a smarter visual selection */
 	'/^([1-9]+[0-9]*)(x|X)$/': function(keys, vim, match) {
+		if(this.execDepth === 1) {
+			this.addUndoState();
+		}
 		var ct = parseInt(match[1]);
 		while(ct--) {
 			vim.exec(match[2]);
@@ -6587,6 +6697,9 @@ module.exports = {
 	},
 
 	'/^x$/': function(keys, vim, res) {
+		if(this.execDepth === 1) {
+			this.addUndoState();
+		}
 		//Using x, don't delete a line if it's empty.
 		var range = this.curDoc.selection();
 		if(range[0].line === range[1].line &! this.curDoc.line(range[0].line).length)  {
@@ -6600,33 +6713,67 @@ module.exports = {
 		this.exec('d');
 	},
 	'/^X$/': function(keys, vim, res) {
+		if(this.execDepth === 1) {
+			this.addUndoState();
+		}
 		this.exec('h');
 		this.exec('x');
 	},
 	'/^D$/': function(keys, vim, res) {
+		if(this.execDepth === 1) {
+			this.addUndoState();
+		}
 		this.exec('d');
 		this.exec('$');
 	},
 	'/^C$/': function(keys, vim, res) {
+		if(this.execDepth === 1) {
+			this.addUndoState();
+		}
 		this.exec('c');
 		this.exec('$');
 	},
 	'/^s$/': function(keys, vim, res) {
+		if(this.execDepth === 1) {
+			this.addUndoState();
+		}
 		this.exec('c');
 		this.exec('l');
 	},
 	'/^S$/': function(keys, vim, res) {
+		if(this.execDepth === 1) {
+			this.addUndoState();
+		}
 		this.exec('c');
 		this.exec('c');
 	},
 
 	'/^u$/': function(keys, vim, res) {
-		this.curDoc.undo.apply(this)
+		if(this.execDepth === 1) {
+			if(this.addUndoState()) {
+				//quick undo to get back to current state just recorded.	
+				this.curDoc.undo.last();
+			}
+		}
+		var state = this.curDoc.undo.last();
+		if(!state) return;
+		this.curDoc.text(state.text);
+		this.curDoc.cursor.char(state.cursor.char);
+		this.curDoc.cursor.line(state.cursor.line);
+	},
+
+	'/<C-r>/': function(keys, vim, res) {
+		var state = this.curDoc.undo.next();
+		if(!state) return;
+		this.curDoc.text(state.text);
+		this.curDoc.cursor.char(state.cursor.char);
+		this.curDoc.cursor.line(state.cursor.line);
 	}
+
 
 }
 
-},{"underscore":18}],22:[function(require,module,exports){
+},{"underscore":19}],23:[function(require,module,exports){
 var hex2rgbString = require('rgb'),
 	x256 = require('x256'),
 	rgbRegExp = /(\d+),(\d+),(\d+)/;
@@ -6638,8 +6785,6 @@ var hex2rgbString = require('rgb'),
 var mauve;
 
 function getPrefix(scheme) {
-
-
 	//Handle the CSS here TODO: bold
 	return '<span style="' +
 		(scheme.fg ? 'color:' + scheme.fg +';': '') +
@@ -6650,19 +6795,14 @@ function getPrefix(scheme) {
 
 mauve = function(raw) {
 	var freshString = new String(raw);
+	if(typeof window !== 'undefined') {
 	for(var scheme in mauve.hash) {
 		freshString[mauve.hash[scheme].name] = new String(getPrefix(mauve.hash[scheme]) + raw + "</span>");
 		freshString[mauve.hash[scheme].name].substring = function() {
 			return getPrefix(mauve.hash[scheme]) + raw.substring.apply(raw,arguments) + "</span>";	
 		};
 	}
-/*
-	for(var scheme in mauve.hash) {
-		mauve.hash[scheme].name = scheme;
-		raw = addColor(raw,mauve.hash[scheme])
 	}
-	return raw;
-*/
 	return freshString;
 }
 
@@ -6703,7 +6843,7 @@ mauve.set = function(name,color) {
 	}
 
 	//In node, ammend this TODO: kill this in favor of above strategy.
-	if(false && typeof window === 'undefined') { //node
+	if(typeof window === 'undefined') { //node
 
 
 		//When called, overwrite the substring method to ignore the added characters
@@ -6781,7 +6921,7 @@ function hex2Address(hex) {
 
 module.exports = mauve;
 
-},{"rgb":23,"x256":24}],23:[function(require,module,exports){
+},{"x256":24,"rgb":25}],25:[function(require,module,exports){
 /*
 color
 */"use strict"
@@ -6956,7 +7096,7 @@ function distance (a, b) {
     )
 }
 
-},{"./colors.json":25}],25:[function(require,module,exports){
+},{"./colors.json":26}],26:[function(require,module,exports){
 module.exports=["000000",
 "800000",
 "008000",
