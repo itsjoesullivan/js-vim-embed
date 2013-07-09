@@ -46,24 +46,28 @@
 	</style>
 </head>
 <body>
-	<pre id='vim'>js-vim-embed is an embeddable implementation of js-vim
+	<pre id='vim'>#js-vim is an implementation of vim in JavaScript 
 
-To get started, the API is almost as simple as that of the ace editor:
+It already incorporates most of the vim bread-and-butter commands:
 
-&lt;pre id='vim'>&lt;/pre>
-&lt;script src='/vim.js'>&lt;script>
-&lt;script>
-	vim.edit({
-		el: document.getElementById('vim')
-	});
-&lt;script>
+  - Motions ( 0 ^ g_ G w (  )
+  - Operators ( y c d )
+  - smartindent
+  - Marks (ma 'a `a)
+  - Registers and macros ( "a, qa{macro}q, @a )
+  - Visual mode ( regular and line-, but not yet block )
 
-js-vim itself a fairly robust implementation of vim:
+And it's very extensible:
 
-	- motions
-		- h, j, k, l
-		- {n}f{m}
-		- /foo
+vim.addCommand({
+	mode: 'command',
+	match: /:w\n/,
+	fn: function() {
+		// Your own save logic here
+		// vim.text() returns the text value of the document.
+	}
+});
+
 </pre>
 
 	<script src='./vim.js'></script>
@@ -78,8 +82,7 @@ js-vim itself a fairly robust implementation of vim:
 
 		vim.text(text);
 
-		vim.exec('G')
-		vim.exec('$')
+		vim.exec('gg')
 	</script>
 </body>
 </html>
