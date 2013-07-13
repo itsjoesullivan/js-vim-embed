@@ -144,7 +144,7 @@ var init = function(obj) {
 
 init();	
 
-},{"./lib/View":1,"./lib/style":3,"./lib/keys":4,"js-vim":5}],3:[function(require,module,exports){
+},{"./lib/View":1,"./lib/keys":3,"./lib/style":4,"js-vim":5}],4:[function(require,module,exports){
 (function() {
 	var style = document.createElement('style');
 	var text = require('../style.css');
@@ -159,10 +159,7 @@ init();
 	h.appendChild(style);
 })();
 
-},{"../style.css":6}],6:[function(require,module,exports){
-module.exports = '.vim-container{margin:0;padding:0;position:relative;height:100%;width:100%;border-radius:4px;color:#f4f4f4;background-color:#111;font-size:14px;font-family:"Courier New", Courier, monospace}.vim-container pre,.vim-container span{font-size:inherit}.vim-container .selection{background-color:#555}.vim-container .selection.cursor{background-color:#888;color:#333}.vim-container .gutter{color:#ca792d;font-weight:700}.vim-container .blank{color:#4a39de;font-weight:700}.vim-container .var{color:#c0bb31}';
-
-},{}],4:[function(require,module,exports){
+},{"../style.css":6}],3:[function(require,module,exports){
 mousetrap = require('../components/component-mousetrap');
 /** Simple way to listen to keystrokes
 
@@ -224,7 +221,10 @@ Keys.prototype.listen = function(obj) {
 	}.bind(this));
 };
 
-},{"../components/component-mousetrap":7}],5:[function(require,module,exports){
+},{"../components/component-mousetrap":7}],6:[function(require,module,exports){
+module.exports = '.vim-container{margin:0;padding:0;position:relative;height:100%;width:100%;border-radius:4px;color:#f4f4f4;background-color:#111;font-size:14px;font-family:"Courier New", Courier, monospace}.vim-container pre,.vim-container span{font-size:inherit}.vim-container .selection{background-color:#555}.vim-container .selection.cursor{background-color:#888;color:#333}.vim-container .gutter{color:#ca792d;font-weight:700}.vim-container .blank{color:#4a39de;font-weight:700}.vim-container .var{color:#c0bb31}';
+
+},{}],5:[function(require,module,exports){
 module.exports = require('./lib/Vim');
 
 },{"./lib/Vim":8}],7:[function(require,module,exports){
@@ -1035,88 +1035,6 @@ module.exports.SHIFT_MAP = _SHIFT_MAP;
 
 },{}],9:[function(require,module,exports){
 module.exports = {
-
-	/* Any time you receive multiple keys in one go */
-	'/^((?!\b|esc)[\\w\\W][\\w\\W]+)$/': function(keys,vim) {
-        for(var i = 0; i < keys.length; i++ ) {
-
-            this.exec(keys.substring(i, i+1));
-        }
-	},
-
-	'/^((?!\b|esc|}).)$/': function(keys,vim,match) {
-		vim.insert(keys);
-	},
-
-    '/^}$/': function() {
-        if(this.rc.smartindent && this.curDoc._lines[this.curDoc.cursor.line()].match(/^\s*$/)) {
-            var ct = this.rc.tabstop;
-            this.exec('esc');
-            while(ct--) {
-                this.exec('X');
-            }
-            this.exec('i');
-        }
-        this.insert('}');
-
-    },
-
-    '/^\n$/': function() {
-        if(!this.rc.smartindent) {
-            this.insert('\n');
-        } else {
-            var thisLine = this.curDoc._lines[this.curDoc.cursor.line()];
-            var indent = thisLine.match(/{\s*(?:\/\/.*|\/\*.*\*\/\s*)?$/);
-            curChar = this.curDoc.cursor.char();
-            this.exec('esc');
-            this.exec('^');
-            
-            //Assume you're indenting to the first non-blank char
-            var ct = this.curDoc.cursor.char();
-            //Unless it's all blank, then to zero.
-            if(thisLine.match(/^\s*$/)) { ct = 0; }
-
-            this.curDoc.cursor.char(curChar);
-            this.insert('\n');
-
-            if(indent) {
-                ct += this.rc.tabstop;
-            }
-            this.exec('i');
-            while(ct-- > 0) {
-                this.exec(' ');
-            }
-        }
-    },
-
-	'/^(\b)$/': function(keys, vim) {
-		var atZero = !vim.curDoc.cursor.char()
-		vim.exec('esc');
-
-		//Only backspace if there's somewhere to go.
-		if(atZero &! vim.curDoc.cursor.line()) return ;
-
-		//Do a join if at the beginning (i.e., deleting a carriage return)		
-		if(atZero && vim.curDoc.cursor.line()) {
-			vim.exec('k');
-			vim.exec('J');
-	    vim.exec('x');
-		} else {
-		//Otherwise just erase the character. This works because "esc" from insert decrements the cursor.
-	    vim.exec('x');
-	  }
-	  vim.exec('i');
-	},
-	'/^esc/': function(keys,vim) {
-		vim.mode('command');
-		vim.exec('h');
-	},
-
-
-};
-
-},{}],10:[function(require,module,exports){
-module.exports = {
 	'/(.*)\n/': function(keys,vim,res) {
 		vim.searchBuffer = res[1];
 		var lastMode = vim.lastMode || 'command';
@@ -1125,277 +1043,7 @@ module.exports = {
 	}
 };
 
-},{}],11:[function(require,module,exports){
-(function(){/*
-
-	Visual mode is just text selection on top of command mode. Each keypress, simply maintain your range.
-
-*/
-
-//TODO absorb these elsewhere... Won't work with multiple vim instances
-var rangeStart,
-		originalCursorPosition = false;
-module.exports = {
-
-    /* Keys that pass through visual mode. Motion, mostly.  */
-	'/^((?![1-9])(?!esc|x|d|y|i|a|J|c|>).*[^1-9]+.*)/': function(keys,vim, res) {
-        //Remember we're in the process of selecting
-		this.curDoc.selecting = true;
-
-		if(!originalCursorPosition) {
-			originalCursorPosition = this.curDoc.cursor.position();
-		}
-
-		this.lastMode = 'visual';
-
-		if(!rangeStart) {
-			rangeStart = {
-				line: this.cursor().line(),
-				char: this.cursor().char()
-			};
-		}
-
-		//execute the command in command mode
-		this.mode('command'); //dont use 'esc' as that is defined below to cancel the visual session
-		this.exec(keys);
-
-		//Establish new cursor as range end / start
-		var end = {
-			line: this.cursor().line(),
-			char: this.cursor().char()
-		};
-
-		var range = [rangeStart,end];
-
-
-		//Reverse if not correct order. But rangeStart remains where it was.
-		if(end.line < rangeStart.line || (end.line === rangeStart.line && end.char < rangeStart.char)) {
-			range = [range[1],range[0]];
-		}
-        range[0].col = range[0].char;
-        range[0].mark = '<';
-        range[1].col = range[1].char;
-        range[1].mark = '>';
-
-
-        this.curDoc.addMark(range[0]);
-        this.curDoc.addMark(range[1]);
-
-		//Visual
-		if(this.submode === 'Visual') {
-
-			range[0].char = 0;
-			var line = this.curDoc.line(range[1].line);
-			range[1].char = this.curDoc.line(range[1].line).length;
-		}
-
-		range[1].char++;
-
-		this.curDoc.selection(range);
-
-		//Assuming we can, move back to visual mode after executing.
-		//If we can't, must trust the mode to return us.
-		if(this.modeName === 'command') this.mode('visual');
-
-	},
-
-	/* OPERATORS
-
-
-	*/
-
-	'/^c$/': function() {
-		this.exec('d');
-		this.exec('i');
-	},
-
-    /* delete */
-	'/^d$/': function() {
-        var sel = this.curDoc.selection();
-		this.exec('y');
-        this.exec('v');
-        this.curDoc.selection(sel);
-
-
-		var doc = this.curDoc;
-
-		//Grab the selection
-		var range = doc.selection();
-
-		//Don't kill the line
-		//if(range[0].line === range[1].line &! doc.line(range[0].line).length) return;
-
-		doc.remove(range);
-		doc.selection('reset');
-
-		//Move to the beginning of the range
-		if(range[0].line >= doc._lines.length) {
-            var newLine = doc._lines.length-1;
-            if(newLine < 0) newLine = 0;
-			doc.cursor.line(newLine);
-		} else {
-			doc.cursor.line(range[0].line);
-		}
-		doc.cursor.char(range[0].char);
-		this.exec('esc');
-
-	},
-
-    /* yank */
-	'/^y$/': function() {
-		var selection = this.curDoc.getRange(this.curDoc.selection());
-		var index = this.currentRegister;
-		this.register(index,selection);
-        this.curDoc.cursor.position(this.curDoc.selection()[0]);
-        this.curDoc.selection('reset');
-        this.exec('esc');
-	},
-
-	/* swap case */
-	'/^~$/': function() {
-	},
-
-
-	/* swap case */
-	'/^g~$/': function() {
-	},
-
-	/* make lowercase */
-	'/^gu$/': function() {
-	},
-
-	/* make uppercase */
-	'/^gU$/': function() {
-	},
-
-	/* filter through an external program */
-	'/^!$/': function() {
-	},
-
-
-	/* filter through 'equalprg' */
-	'/^=$/': function() {
-	},
-
-	/* text formatting */
-	'/^gq$/': function() {
-	},
-
-	/* ROT13 encoding */
-	'/^g?$/': function() {
-	},
-
-	/* shift right */
-	'/^>$/': function() {
-		var selection = this.curDoc.selection();
-		var ct = selection[1].line - selection[0].line + 1;
-		this.curDoc.cursor.line(selection[0].line)
-		while(ct > 0) {
-			this.exec('0');
-			this.mode('insert');
-			this.exec('\t')
-			this.mode('visual')
-			this.exec('j');
-			ct--
-		}
-		this.exec('esc');
-		this.exec('^');
-	},
-
-	/* shift left */
-	'/^<$/': function() {
-
-	},
-
-	/* define a fold */
-	'/^zf$/': function() {
-
-	},
-
-	/* call function set with the 'operatorfunc' option */
-	'/^g@$/': function() {
-
-	},
-
-
-	// Inner select
-	'/^([1-9]+[0-9]*)?(a|i)(w|W|s|S|p|\\]|\\[|\\(|\\)|b|>|<|t|\\{|\\}|"|\'|`)$/': function(keys, vim, match) {
-		var outer = match[2] === 'a';		
-		var count = 1;
-		if(match[1] && match[1].length) count = parseInt(match[1]);
-		var boundaries = [];
-		var boundaryMap = {
-			'w': ['b','e'],
-			'W': ['F ','f '],
-			'"': ['F"','f"'],
-			's': ['(',')'],
-			'(': ['F(','f)']
-		};
-
-		if(match[3] in boundaryMap) {
-			boundaries = boundaryMap[match[3]]
-		} else {
-			boundaries = [match[3],match[3]];
-		}
-
-		var moveIn = false
-		if(boundaries[0].substring(0,1) === 'F' && match[2] === 'i') {
-			boundaries[0] = 'T' + boundaries[0].substring(1);
-			boundaries[1] = 't' + boundaries[1].substring(1);
-		} else if(match[2] === 'i') { //fix this
-			moveIn = true;
-		}
-
-		if(boundaries.length) {
-			this.exec('esc');
-			var i = 0;
-			while(i++ < count) {
-				this.exec(boundaryMap[match[3]][0])
-			}
-			if(moveIn) this.exec('l');
-			this.exec('v');
-			var i = 0;
-			while(i++ < count) {
-				this.exec(boundaryMap[match[3]][1])
-			}
-
-			if(moveIn) this.exec('h');
-		}
-
-
-	},
-
-	'/^esc/': function(keys,vim) {
-		rangeStart = false;
-		this.curDoc.selection('reset');
-		this.curDoc.selecting = false;
-		this.curDoc.cursor.line(originalCursorPosition.line);
-		this.curDoc.cursor.char(originalCursorPosition.char);
-		originalCursorPosition = false;
-		this.submode = false;
-	},
-
-	'/^(x)$/': function(keys, vim) {
-		this.exec('d');
-	},
-
-
-	'/^(J)$/': function(keys, vim) {
-		var range = this.curDoc.selection();
-		var ct = range[1].line - range[0].line || 1; //do first join ANYWAYS
-
-		//Move to the beginning
-		this.curDoc.cursor.line(range[0].line);
-		this.exec('esc');
-		while(ct--) {
-			this.exec('J');
-		}
-	}
-};
-
-
-})()
-},{}],12:[function(require,module,exports){
+},{}],10:[function(require,module,exports){
 (function(){function parseRange(range,doc) {
 	if(range === '.-') range = '.-1';
 	if(range === '-') range = '.-1';
@@ -1548,12 +1196,38 @@ Vim = function(obj) {
     vim: this
   });
 
+  //Place for multiple docs
+  this.docs = [];
+
+  //Clipboard stuff. TODO: refactor out into separate module
+  this._numRegistry = [];
+  this._registry = {};
+  //Hm.
+  this.currentRegister = 0;
+
+  //Remember everything types in that particular insertion
+  this.insertSession = '';
+
+
+  //Giving this method a shot.
+  this.histories = {
+	':': []
+  };
+  this.histories[':'].position = 0;
+
+
   this.marks = {};
 
-    this.rc = {
-     tabstop: 4,
-     smartindent: true
-    };
+  this.rc = {
+	tabstop: 4,
+	smartindent: true,
+	shiftwidth: 4,
+	abbreviations: {}
+
+  };
+
+  this.curChar = '';
+  this.curWord = '';
 
 
   //Instanciate parser
@@ -1563,23 +1237,6 @@ Vim = function(obj) {
   //API: https://code.google.com/p/google-diff-match-patch/wiki/API
   var dmpmod = require('diff_match_patch');
   this.dmp = new dmpmod.diff_match_patch();
-
-  //Place for multiple docs
-  this.docs = [];
-
-
-  //Clipboard stuff. TODO: refactor out into separate module
-  this._numRegistry = [];
-  this._registry = {};
-  //Hm.
-  this.currentRegister = 0;
-
-
-  //Giving this method a shot.
-  this.histories = {
-	':': []
-  };
-  this.histories[':'].position = 0;
 
   //Current depth of command execution. 
   //0 is idle; 
@@ -1751,6 +1408,12 @@ Vim.prototype.useRegister = function() {
 
 var _text = '';
 
+var abbreviationKeyMap = {
+	' ': 1,
+	'\n': 1,
+	'esc': 1
+};
+
 /** Execute a given command by passing it through 
  */
 Vim.prototype.exec = function(newCommand) {
@@ -1766,6 +1429,7 @@ Vim.prototype.exec = function(newCommand) {
   if(this.execDepth === 1) {
     this.keyHistory += newCommand;
   }
+
 
   command = this.keyBuffer;
   //TODO change triggers in order
@@ -1786,9 +1450,33 @@ Vim.prototype.exec = function(newCommand) {
     return;
   }
 
+
+
   //Increment the depth so we can identify top-level commands
   this.execDepth++;
 
+  //Handle abbreviations
+  if(this.modeName === 'insert' 
+	  && this.execDepth === 1 
+	  && command in abbreviationKeyMap 
+	  && abbreviationKeyMap[command] 
+	  && this.currentInsertedText.length >= this.curWord.length) {
+	  if(this.curWord in this.rc.abbreviations) {
+		 var key = command;
+		 var curWord = this.curWord;
+		 var newWord = this.rc.abbreviations[this.curWord];
+		 var pos = this.curDoc.cursor.position();
+		 this.curDoc.remove([{
+			 line: pos.line,
+			 char: pos.char - curWord.length
+		 }, {
+			 line: pos.line,
+			 char: pos.char
+		 }]);
+		 this.curDoc.cursor.char(pos.char - curWord.length);
+		 this.curDoc.insert(newWord);
+	  }
+  }
 
 
   //If this is top-level command, store the value of text for diffing to store the undo
@@ -1904,6 +1592,7 @@ Vim.prototype.exec = function(newCommand) {
   }
 
   this.curChar = this.curDoc.getRange(this.curDoc.selection()).substring(0, 1);
+  this.curWord = getCurWord(this);
   this.execDepth--;
 
   if(this.execDepth === 0) {
@@ -1911,6 +1600,26 @@ Vim.prototype.exec = function(newCommand) {
   }
 
 };
+
+function getCurWord(vim) {
+	var doc = vim.curDoc;
+	var startPoint = doc.find(/(?:^|\W)(\w+)$/g, { backwards: true, inclusive: true  });
+	var endPoint;
+	if(vim.modeName === 'insert') {
+		endPoint = doc.find(/(\w)$/g, { backwards: true, inclusive: true });
+	} else {
+		endPoint = doc.find(/(\w)(?:$|\W)/g, { inclusive: true } );
+	}
+	// Expand for range friendly ness
+	endPoint.col++;
+	endPoint.char++;
+	if(endPoint.found && startPoint.found) {
+		var word = doc.getRange([startPoint,endPoint]);
+		return word;
+	} else {
+		return '';
+	}
+}
 
 Vim.prototype.addUndoState = function() {
 	var pos = this.curDoc.cursor.position();
@@ -1972,226 +1681,7 @@ Vim.prototype.Doc = Doc;
 
 module.exports = Vim;
 
-},{"./mark":13,"./Doc":14,"./View":15,"./modes/insert":9,"./modes/command":16,"./modes/search":10,"./modes/visual":11,"./modes/ex":12,"set":17,"underscore":18,"js-vim-command":19,"diff_match_patch":20}],21:[function(require,module,exports){
-module.exports = function() {};
-
-/** 
- * Add a listener by event name
- * @param {String} name
- * @param {Function} fn
- * @return {Event} instance
- * @api public
- */
-module.exports.prototype.on = function(name,fn) {
-
-	//Lazy instanciation of events object
-	var events = this.events = this.events || {};
-
-	//Lazy instanciation of specific event
-  events[name] = events[name] || [];
-
-  //Give it the function
-  events[name].push(fn);
-
-  return this;
-
-};
-
-
-/** 
- * Trigger an event by name, passing arguments
- * 
- * @param {String} name
- * @return {Event} instance
- * @api public
- */
-module.exports.prototype.trigger = function(name, arg1, arg2 /** ... */) {
-
-	//Only if events + this event exist...
-  if(!this.events || !this.events[name]) return this;
-
-  //Grab the listeners
-  var listeners = this.events[name],
-    //All arguments after the name should be passed to the function
-  	args = Array.prototype.slice.call(arguments,1);
-
-  //So we can efficiently apply below
-  function triggerFunction(fn) {
-  	fn.apply(this,args);
-  };
-
-  if('forEach' in listeners) {
-  	listeners.forEach(triggerFunction.bind(this));
-  } else {
-  	for(var i in listeners) {
-  	  if(listeners.hasOwnProperty(i)) triggerFunction(fn);
-  	}
-  }
-
-  return this;
-
-};
-},{}],22:[function(require,module,exports){
-var Undo = module.exports = function() {
-	this._history = [];
-	this.position = 0;
-};
-
-/** Add a state
- *
- * N.B.: this.position can use some conceptual explanation.
- * At its root, position is the state that you are presently in.
- * Undo.add is not used when you have completed a change, but when you are about to initiate a change. Therefore it's appropriate that insert the state at your current position, then increment position into a state that is not defined in _history.
- */
-Undo.prototype.add = function(ev) {
-
-	//Don't add additional identical states.
-	if(this.position && typeof ev !== 'string' && 'cursor' in ev && 'text' in ev) {
-			var current = this._history.slice(this.position-1,this.position)[0];
-			var next = this._history.slice(this.position,this.position+1);
-			next = next.length ? next[0] : false;
-			if(areSame(ev,current) || (next && areSame(ev,next))) {
-				return;
-			}
-	}
-
-	this._history.splice(this.position);
-	this._history.push(ev);
-	this.position++;
-	return true;
-};
-
-function areSame(ev1,ev2) {
-	return (ev1.text === ev2.text);
-}
-
-/** Retrieve a state and move the current "position" to there
- */
-Undo.prototype.get = function(index) {
-	if(index < 0 || index >= this._history.length) return;
-	var state = this._history.slice(index,index+1)[0];	
-	this.position = index;
-	return state;
-};
-
-/** Retrieve the previous state
- */
-Undo.prototype.last = function() {
-	return this.get(this.position-1);
-};
-
-/** Retrieve the next state
- */
-Undo.prototype.next = function() {
-	return this.get(this.position+1);
-};
-
-
-},{}],19:[function(require,module,exports){
-var Parser = function() {};
-
-/** Parse a command
-
-input: string of text
-output: object containing the interpreted string and an array with each element 
-
-*/
-Parser.prototype.parse = function(command) {
-
-	var motion = this.getLastMotion(command);
-
-	var prefix = command;
-
-	var command = {
-		description: '',
-		value: []
-	};
-	
-
-	var next;
-
-	while(prefix.length) {
-		next = this.getLastCount(prefix) || this.getLastMotion(prefix) || this.getLastOperator(prefix);
-		if(!next) break
-		prefix = next.prefix;	
-		command.description = next.description + command.description;
-		command.value.unshift(next.value);
-		command.prefix = next.prefix;
-	}
-	return command.description.length ? command : false;
-
-
-
-	var x = this.getLastCount(command) || this.getLastMotion(command) ||	this.getLastOperator(command);
-
-		
-		
-/*
-
-
-	{count}
-
-	{count}{op}{motion}
-	{op}{count}{motion}
-	{count}{op}{count}{motion}
-
-	{motion}
-
-	{
-*/
-	
-};
-//Test for operator
-var opTest = new RegExp('\(\.\*\?\)\(c\|d\|y\|~\|g~\|gu\|gU\|!\|=\|gg\|g\\?\|>\|<\|zf\|g@\)$');
-/** Determines whether command is an operator, returning it if so */
-Parser.prototype.getLastOperator = function(command) {
-	var op = opTest.exec(command)
-	if(!op) return;
-	return {
-		description: '{operator}',
-		value: op[2],
-		prefix: op[1]
-	};
-};
-
-/** Get motions, of which there are a variety
-	h l 0 ^ g_ | (f|F|t|T){char} ; , k j - + _ G
-	
-word motions:
-	e E w W b B ge gE
-
-text object motions:
-	( ) { } ]] [] [[ []
-
-*/
-var motions = ['h', '%', 'l','0','\\$','\\^','g_','\\|','\(?:\'\|`\)\(\?\:[a-z]\)','\(?:f\|F\|t\|T\)\(\?\:.\)',';',',','k','j','\\+','-','_','(?:[1-9]+[0-9]*|)G','e','E','w','W','b','B','ge','gE','\\(','\\)','\\{','\\}','\\]\\]','\\]\\[','\\[\\[','\\[\\]','(?:\\?|\\/)(?:\\S+)\\n'];
-var motionTest = new RegExp('\(\.\*\?\)\(' + motions.join('\|') + '\)\$');
-Parser.prototype.getLastMotion = function(command) {
-	var motion = motionTest.exec(command);	
-	if(!motion) return;
-	return {
-		description: '{motion}',
-		value: motion[2],
-		prefix: motion[1]
-	}
-};
-
-
-var countTest = /(.*?)([1-9]+[0-9]*)$/
-Parser.prototype.getLastCount = function(command) {
-	var countResult = countTest.exec(command);
-	if(!countResult) return;
-	return {
-		description: '{count}',
-		value: parseInt(countResult[2]),
-		prefix: countResult[1]
-	};
-};
-
-
-module.exports = Parser;
-
-},{}],18:[function(require,module,exports){
+},{"./mark":11,"./Doc":12,"./View":13,"./modes/insert":14,"./modes/command":15,"./modes/search":9,"./modes/visual":16,"./modes/ex":10,"set":17,"underscore":18,"js-vim-command":19,"diff_match_patch":20}],18:[function(require,module,exports){
 (function(){//     Underscore.js 1.4.4
 //     http://underscorejs.org
 //     (c) 2009-2013 Jeremy Ashkenas, DocumentCloud Inc.
@@ -3420,6 +2910,225 @@ module.exports = Parser;
 }).call(this);
 
 })()
+},{}],21:[function(require,module,exports){
+module.exports = function() {};
+
+/** 
+ * Add a listener by event name
+ * @param {String} name
+ * @param {Function} fn
+ * @return {Event} instance
+ * @api public
+ */
+module.exports.prototype.on = function(name,fn) {
+
+	//Lazy instanciation of events object
+	var events = this.events = this.events || {};
+
+	//Lazy instanciation of specific event
+  events[name] = events[name] || [];
+
+  //Give it the function
+  events[name].push(fn);
+
+  return this;
+
+};
+
+
+/** 
+ * Trigger an event by name, passing arguments
+ * 
+ * @param {String} name
+ * @return {Event} instance
+ * @api public
+ */
+module.exports.prototype.trigger = function(name, arg1, arg2 /** ... */) {
+
+	//Only if events + this event exist...
+  if(!this.events || !this.events[name]) return this;
+
+  //Grab the listeners
+  var listeners = this.events[name],
+    //All arguments after the name should be passed to the function
+  	args = Array.prototype.slice.call(arguments,1);
+
+  //So we can efficiently apply below
+  function triggerFunction(fn) {
+  	fn.apply(this,args);
+  };
+
+  if('forEach' in listeners) {
+  	listeners.forEach(triggerFunction.bind(this));
+  } else {
+  	for(var i in listeners) {
+  	  if(listeners.hasOwnProperty(i)) triggerFunction(fn);
+  	}
+  }
+
+  return this;
+
+};
+},{}],22:[function(require,module,exports){
+var Undo = module.exports = function() {
+	this._history = [];
+	this.position = 0;
+};
+
+/** Add a state
+ *
+ * N.B.: this.position can use some conceptual explanation.
+ * At its root, position is the state that you are presently in.
+ * Undo.add is not used when you have completed a change, but when you are about to initiate a change. Therefore it's appropriate that insert the state at your current position, then increment position into a state that is not defined in _history.
+ */
+Undo.prototype.add = function(ev) {
+
+	//Don't add additional identical states.
+	if(this.position && typeof ev !== 'string' && 'cursor' in ev && 'text' in ev) {
+			var current = this._history.slice(this.position-1,this.position)[0];
+			var next = this._history.slice(this.position,this.position+1);
+			next = next.length ? next[0] : false;
+			if(areSame(ev,current) || (next && areSame(ev,next))) {
+				return;
+			}
+	}
+
+	this._history.splice(this.position);
+	this._history.push(ev);
+	this.position++;
+	return true;
+};
+
+function areSame(ev1,ev2) {
+	return (ev1.text === ev2.text);
+}
+
+/** Retrieve a state and move the current "position" to there
+ */
+Undo.prototype.get = function(index) {
+	if(index < 0 || index >= this._history.length) return;
+	var state = this._history.slice(index,index+1)[0];	
+	this.position = index;
+	return state;
+};
+
+/** Retrieve the previous state
+ */
+Undo.prototype.last = function() {
+	return this.get(this.position-1);
+};
+
+/** Retrieve the next state
+ */
+Undo.prototype.next = function() {
+	return this.get(this.position+1);
+};
+
+
+},{}],19:[function(require,module,exports){
+var Parser = function() {};
+
+/** Parse a command
+
+input: string of text
+output: object containing the interpreted string and an array with each element 
+
+*/
+Parser.prototype.parse = function(command) {
+
+	var motion = this.getLastMotion(command);
+
+	var prefix = command;
+
+	var command = {
+		description: '',
+		value: []
+	};
+	
+
+	var next;
+
+	while(prefix.length) {
+		next = this.getLastCount(prefix) || this.getLastMotion(prefix) || this.getLastOperator(prefix);
+		if(!next) break
+		prefix = next.prefix;	
+		command.description = next.description + command.description;
+		command.value.unshift(next.value);
+		command.prefix = next.prefix;
+	}
+	return command.description.length ? command : false;
+
+
+
+	var x = this.getLastCount(command) || this.getLastMotion(command) ||	this.getLastOperator(command);
+
+		
+		
+/*
+
+
+	{count}
+
+	{count}{op}{motion}
+	{op}{count}{motion}
+	{count}{op}{count}{motion}
+
+	{motion}
+
+	{
+*/
+	
+};
+//Test for operator
+var opTest = new RegExp('\(\.\*\?\)\(c\|d\|y\|~\|g~\|gu\|gU\|!\|=\|gg\|g\\?\|>\|<\|zf\|g@\)$');
+/** Determines whether command is an operator, returning it if so */
+Parser.prototype.getLastOperator = function(command) {
+	var op = opTest.exec(command)
+	if(!op) return;
+	return {
+		description: '{operator}',
+		value: op[2],
+		prefix: op[1]
+	};
+};
+
+/** Get motions, of which there are a variety
+	h l 0 ^ g_ | (f|F|t|T){char} ; , k j - + _ G
+	
+word motions:
+	e E w W b B ge gE
+
+text object motions:
+	( ) { } ]] [] [[ []
+
+*/
+var motions = ['h','l','0','\\$','\\^','g_','\\|','\(?:\'\|`\)\(\?\:[a-z]\)','\(?:f\|F\|t\|T\)\(\?\:.\)',';',',','k','j','\\+','-','_','(?:[1-9]+[0-9]*|)G','e','E','w','W','b','B','ge','gE','\\(','\\)','\\{','\\}','\\]\\]','\\]\\[','\\[\\[','\\[\\]','(?:\\?|\\/)(?:\\S+)\\n'];
+var motionTest = new RegExp('\(\.\*\?\)\(' + motions.join('\|') + '\)\$');
+Parser.prototype.getLastMotion = function(command) {
+	var motion = motionTest.exec(command);	
+	if(!motion) return;
+	return {
+		description: '{motion}',
+		value: motion[2],
+		prefix: motion[1]
+	}
+};
+
+
+var countTest = /(.*?)([1-9]+[0-9]*)$/
+Parser.prototype.getLastCount = function(command) {
+	var countResult = countTest.exec(command);
+	if(!countResult) return;
+	return {
+		description: '{count}',
+		value: parseInt(countResult[2]),
+		prefix: countResult[1]
+	};
+};
+
+
+module.exports = Parser;
+
 },{}],20:[function(require,module,exports){
 (function(){/**
  * Diff Match and Patch
@@ -5652,12 +5361,12 @@ Cursor.prototype.position = function(pos) {
         this.line(pos.line);
         this.char(pos.char);
     }
-	return { line: this.line(), char: this.char() }
+	return { line: this.line(), char: this.char(), col: this.col() }
 };
 
 module.exports = Cursor;
 
-},{"./Event":21}],13:[function(require,module,exports){
+},{"./Event":21}],11:[function(require,module,exports){
 var _ = require('underscore');
 //http://blog.elliotjameschong.com/2012/10/10/underscore-js-deepclone-and-deepextend-mix-ins/ thanks!
 _.mixin({ deepClone: function (p_object) { return JSON.parse(JSON.stringify(p_object)); } });
@@ -5724,7 +5433,7 @@ var mark = module.exports = function(str,mk) {
     return str;
 };
 
-},{"underscore":18}],14:[function(require,module,exports){
+},{"underscore":18}],12:[function(require,module,exports){
 (function(){var Cursor = require('./Cursor');
 var _ = require('underscore');
 
@@ -5819,6 +5528,17 @@ Doc.prototype.getRange = function(range) {
 
   var text = mark('');
 
+	// If block selection
+  if(!('line' in range[0]) && range[0][0] && 'line' in range[0][0]) {
+	//AAAHHH!
+	_(range).each(function(subRange) {
+		text += this.getRange(subRange);
+	},this);
+	return text;
+	
+  }
+
+
   //if same line, just do as one
   if (range[0].line === range[1].line) {
     text = this.line(range[0].line).substring(parseInt(range[0].char),parseInt(range[1].char));
@@ -5852,6 +5572,7 @@ Doc.prototype.getRange = function(range) {
 /** Add a mark to the document, embedded in one of the lines of the document
  */
 Doc.prototype.addMark = function(mk) {
+	if(!mk) return;
     if(! ('line' in mk && 'col' in mk) ) throw "bad mark."
         var markId = (new Date().getTime() + Math.random()).toString(16)
         mk.id = markId;
@@ -5923,10 +5644,11 @@ Doc.prototype.insert = function(text) {
     this.cursor.char(this.cursor.char() + text.length);
   }
 
-  var prevMode = this.vim.modeName;
-  this.vim.mode('command');
-  this.vim.exec('m.');
-  this.vim.mode(prevMode);
+//Add mark
+  var pos = this.cursor.position();
+  pos.mark = '.';
+  this.addMark(pos);
+
   this.set({
     text: this._lines.join('\n')
   });
@@ -5952,6 +5674,11 @@ Doc.prototype.insert = function(text) {
 Doc.prototype.remove = function(range) {
   //if invalid
   if (!isRange(range)) throw 'Not a valid range.';
+  if(!('line' in range[0])) {
+	  return _.each(range, function(subRange) {
+		  this.remove(subRange);
+	  },this);
+  }
 
   //grab first half of line if exists
   var first = this._lines[range[0].line].substring(0, range[0].char);
@@ -5981,10 +5708,11 @@ Doc.prototype.remove = function(range) {
     this._lines[range[0].line] = first.concat(last);
   }
 
-  var prevMode = this.vim.modeName;
-  this.vim.mode('command');
-  this.vim.exec('m.');
-  this.vim.mode(prevMode);
+	//Add mark
+  var pos = this.cursor.position();
+  pos.mark = '.';
+  this.addMark(pos);
+
 
   this.set({
     text: this._lines.join('\n')
@@ -5999,7 +5727,9 @@ Doc.prototype.find = function(exp, opts) {
   backwards = false,
   wholeLine = false,
   // Range here represents how far to look. Defaults to %, all.
-  range = (opts.range || opts.range === false) ? opts.range : '%';
+  range = (opts.range || opts.range === false) ? opts.range : '%',
+  offset = 0,
+  inclusive = false;
 
   if (this.selecting) {
     carriage = '\n';
@@ -6009,14 +5739,42 @@ Doc.prototype.find = function(exp, opts) {
     backwards = true;
   }
 
+  if('inclusive' in opts && opts.inclusive) {
+	  inclusive = true;
+  }
+
   if('wholeLine' in opts && opts.wholeLine) wholeLine = true;
+
+  if('offset' in opts && opts.offset) offset = opts.offset;
+
 
   //check the rest of this line
   var rest;
   var thisLine = this.line() + carriage;
 
+  var tmpOffset = 0;
+  if(offset) {
+	  tmpOffset = offset;
+  } else if(wholeLine) {
+	  tmpOffset = 0;
+  } else {
+	  tmpOffset = this.cursor.char();
+	  if(backwards) {
+		//TODO
+	  } else {
+		  tmpOffset += 1;
+	  }
+	  if(inclusive) {
+		  if(backwards) {
+			tmpOffset += 1;
+		  } else {
+			  tmpOffset -= 1;
+		  }
+	}
+}
 
-  var curIndex = checkString(exp, thisLine, wholeLine ? 0 : (this.cursor.char() + (backwards ? 0 : 1) ), backwards);
+
+  var curIndex = checkString(exp, thisLine, tmpOffset, backwards);
 
 
   if (curIndex > -1) {
@@ -6083,7 +5841,7 @@ function checkString(exp, str, offset, backwards) {
 
   if (!test) return -1;
 
-  result = !! test[1] ? test[1] : test[2];
+  result = !!test[1] ? test[1] : test[2];
   if (backwards ) {
       // AND this match is not looking for the beginning of the line. 
       // TODO: make this check airtight, maybe faster.
@@ -6093,7 +5851,7 @@ function checkString(exp, str, offset, backwards) {
         return str.lastIndexOf(result);
     }
   } else {
-    return exp.lastIndex - result.length;
+    return exp.lastIndex - test[0].length + test[0].indexOf(test[1]);
   }
 
 }
@@ -6122,6 +5880,14 @@ Doc.prototype.selection = function(range) {
 
 
 function isRange(range) {
+  if(!('line' in range[0]) && _(range[0]).isArray()) {
+	  var areRanges = true;
+	  _.each(range, function(subRange) {
+		  if(!isRange(subRange)) areRanges = false;
+	  });
+	  return areRanges;
+
+  }
   if (!range) return false;
   if (!('length' in range)) return false;
 
@@ -6138,6 +5904,11 @@ function isRange(range) {
   return true;
 };
 
+/** Check whether a position is a part of the current selection. */
+Doc.prototype.inSelection = function(pos) {
+
+};
+
 Doc.prototype.exec = function() {
     if('vim' in this) this.vim.exec.apply(this.vim,arguments);
 }
@@ -6145,7 +5916,7 @@ Doc.prototype.exec = function() {
 module.exports = Doc;
 
 })()
-},{"./Cursor":24,"./mark":13,"./Event":21,"./Undo":22,"underscore":18}],15:[function(require,module,exports){
+},{"./Cursor":24,"./mark":11,"./Event":21,"./Undo":22,"underscore":18}],13:[function(require,module,exports){
 var _ = require('underscore'),
 	Set = require('set');
 
@@ -6353,20 +6124,40 @@ View.prototype.getArray = function() {
 /** render a specific character. This is brutal, but simplest way to handle cursor + selection highlighting without stepping on one another's toes.
  */	
 function renderChar(character,position,cursor,selection) {
-if(cursor.line === position.line && cursor.char === position.char) 
-	return mauve(character).cursor; 
-if(position.line < selection[0].line || position.line > selection[1].line) 
-	return character;	
-if(position.line > selection[0].line && position.line < selection[1].line) 
-	return mauve(character).selection;
-if(position.line === selection[0].line && position.line !== selection[1].line && position.char >= selection[0].char) 
-	return mauve(character).selection;
-if(position.line === selection[1].line && position.line !== selection[0].line && position.char < selection[1].char)
-	return mauve(character).selection;
-if(selection[0].line === selection[1].line && position.line === selection[0].line) {
-	if(position.char >= selection[0].char && position.char < selection[1].char)
-		return mauve(character).selection;
-}
+
+	// If is cursor, just do that.
+	if(cursor.line === position.line && cursor.char === position.char) 
+		return mauve(character).cursor; 
+	// If is a typical range, show that.
+	if('line' in selection[0]) {
+		if(position.line < selection[0].line || position.line > selection[1].line) 
+			return character;	
+		if(position.line > selection[0].line && position.line < selection[1].line) 
+			return mauve(character).selection;
+		if(position.line === selection[0].line && position.line !== selection[1].line && position.char >= selection[0].char) 
+			return mauve(character).selection;
+		if(position.line === selection[1].line && position.line !== selection[0].line && position.char < selection[1].char)
+			return mauve(character).selection;
+		if(selection[0].line === selection[1].line && position.line === selection[0].line) {
+			if(position.char >= selection[0].char && position.char < selection[1].char)
+				return mauve(character).selection;
+		}
+	} else {
+		// A visual block selection
+		if(position.line < selection[0][0].line 
+			|| position.line > selection[selection.length-1][1].line) return character;
+	    var result = false;
+		
+		_(selection).find(function(range) {
+			if(range[0].line === position.line 
+				&& (position.char >= range[0].char 
+					&& position.char < range[1].char)) {
+				result = mauve(character).selection;
+			}
+		});
+		if(result) return character.selection;
+
+	}
 return character;
 }
 
@@ -6554,7 +6345,128 @@ module.exports.prototype.trigger = function(name, arg1, arg2 /** ... */) {
   return this;
 
 };
-},{}],16:[function(require,module,exports){
+},{}],14:[function(require,module,exports){
+var _ = require('underscore');
+var mark = require('../mark');
+
+module.exports = {
+
+	/* Any time you receive multiple keys in one go */
+	'/^((?!\b|esc)[\\w\\W][\\w\\W]+)$/': function(keys,vim) {
+        for(var i = 0; i < keys.length; i++ ) {
+            this.exec(keys.substring(i, i+1));
+        }
+	},
+
+	'/^((?!\b|esc|}).)$/': function(keys,vim,match) {
+		this.currentInsertedText += keys
+		vim.insert(keys);
+	},
+
+    '/^}$/': function() {
+        if(this.rc.smartindent && this.curDoc._lines[this.curDoc.cursor.line()].match(/^\s*$/)) {
+            var ct = this.rc.tabstop;
+            this.exec('esc');
+            while(ct--) {
+                this.exec('X');
+            }
+            this.exec('i');
+        }
+        this.insert('}');
+
+    },
+
+    '/^\n$/': function(keys) {
+		this.currentInsertedText += keys;
+        if(!this.rc.smartindent || this.curDoc._lines[this.curDoc.cursor.line()].length === 0 ) {
+            this.insert('\n');
+        } else {
+            var thisLine = this.curDoc._lines[this.curDoc.cursor.line()];
+            var indent = thisLine.match(/{\s*(?:\/\/.*|\/\*.*\*\/\s*)?$/);
+            curChar = this.curDoc.cursor.char();
+			var currentText = this.currentInsertedText;
+            this.exec('esc');
+            this.exec('^');
+            
+            //Assume you're indenting to the first non-blank char
+            var ct = this.curDoc.cursor.char();
+            //Unless it's all blank, then to zero.
+            if(thisLine.match(/^\s*$/)) { ct = 0; }
+
+            this.curDoc.cursor.char(curChar);
+            this.insert('\n');
+
+            if(indent) {
+                ct += this.rc.tabstop;
+            }
+            this.exec('i');
+			this.currentInsertedText = currentText;
+            while(ct-- > 0) {
+                this.exec(' ');
+            }
+        }
+    },
+
+	'/^(\b)$/': function(keys, vim) {
+		if(this.currentInsertedText.length) this.currentInsertedText = this.currentInsertedText.substring(0,this.currentInsertedText.length-1);
+		var atZero = !vim.curDoc.cursor.char()
+		vim.exec('esc');
+
+		//Only backspace if there's somewhere to go.
+		if(atZero &! vim.curDoc.cursor.line()) return ;
+
+		//Do a join if at the beginning (i.e., deleting a carriage return)		
+		if(atZero && vim.curDoc.cursor.line()) {
+			vim.exec('k');
+			vim.exec('J');
+	    vim.exec('x');
+		} else {
+		//Otherwise just erase the character. This works because "esc" from insert decrements the cursor.
+	    vim.exec('x');
+	  }
+	  vim.exec('i');
+	},
+	'/^esc/': function(keys,vim) {
+		//Handle text
+
+		vim.mode('command');
+		vim.exec('h');
+
+		if(this.submode === 'block' &! this.currentInsertedText.match(/\n/)) {
+			this.submode = '';
+			var lastText = this.currentInsertedText;
+			//For each line that was a part of that block selection
+			var meaningfulSelection = this.lastSelection.slice(1);
+			_(meaningfulSelection).each(function(range) {
+				//Move to the beginning of the selection on that line
+				if(this.submodeVerb === 'I') {
+					this.curDoc.cursor.position(range[0]);
+					this.exec('i');
+				} else if(this.submodeVerb === 'A') {
+					var newPos = range[1];
+					newPos.char--;
+					newPos.col--;
+					this.curDoc.cursor.position(range[1]);
+					this.exec('a');
+				}
+				this.exec(lastText);
+				this.exec('esc');
+			},this);
+			this.curDoc.cursor.position(this.lastSelection[0][0]);
+
+		}
+
+		this.register('.',this.currentInsertedText);
+		this.currentInsertedText = this.currentInsertedText.substring(0,0);
+
+
+
+	},
+
+
+};
+
+},{"../mark":11,"underscore":18}],15:[function(require,module,exports){
 var _ = require('underscore');
 
 module.exports = {
@@ -6634,6 +6546,9 @@ module.exports = {
 			doc.cursor.line(point.line);
 			doc.cursor.char(point.char);
 		}
+	},
+
+	'/^gv$/': function() {
 	},
 
 	'/^(b|B)/': function(keys,vim) {
@@ -6752,7 +6667,8 @@ module.exports = {
 
 	'/^l$/': function(keys,vim) {
 		var newChar = this.cursor().char()+1;
-		if(newChar >= this.curDoc.line().length) return;
+		if(!this.curDoc.selecting && newChar >= this.curDoc.line().length) return;
+
 		this.cursor().char(newChar);
 	},
 
@@ -6857,8 +6773,10 @@ module.exports = {
 		this.curDoc.last('search',keys)
 
 		this.searchMode = match[1] === '/' ? 'forwards' : 'backwards';
-		//var term = match[2].replace(/(\(|\))/,'\\$1');
 		this.searchBuffer = match[2];
+		if(match[2].match(/"[a-z]/)) {
+			this.searchBuffer = this.register(match[2].substring(1));
+		}
 		var pt = this.curDoc.find(new RegExp('(' + this.searchBuffer.replace(/[\-\[\]\/\{\}\(\)\*\+\?\.\\\^\$\|]/g, "\\$&") + ')','g'),{selection: true, backwards: vim.searchMode==='backwards'});
 		if(pt) {
 			this.cursor().line(pt.line);
@@ -6903,6 +6821,8 @@ module.exports = {
 		}
 		//this.exec('h');
 		if(!this.curDoc._lines.length) { this.curDoc._lines.push(''); }
+		this.currentInsertedText = '';
+		this.insertSession = '';
 		this.mode('insert');
 	},
 
@@ -6923,12 +6843,19 @@ module.exports = {
 	},
 
 	'/^v$/': function(keys,vim) {
+		var pos = this.curDoc.cursor.position()
+		this.rangeStart = this.rangeEnd = pos;
 		this.mode('visual');
 	},
 
 	'/^V$/': function(keys,vim) {
 		this.submode = 'Visual';
-		this.mode('visual');
+		this.exec('v');
+	},
+
+	'/^<C-v>$/': function() {
+		this.submode = 'block';
+		this.exec('v');
 	},
 
 
@@ -7247,6 +7174,23 @@ module.exports = {
 		this.exec(hist[pos]);
 	},
 
+	'/^:abbreviate (.*?) (.*)\n$/': function(keys, vim, expr) {
+		var key = expr[1];
+		var val = expr[2];
+		this.rc.abbreviations[key] = val;
+	},
+
+	'/^:ab (.*?) (.*)\n$/': function(keys) {
+		this.exec(keys.replace(/:ab/,':abbreviate'));
+	},
+
+	'/^~$/': function() {
+		var curChar = this.curChar;
+		this.exec('r');
+		this.exec(this.curChar === this.curChar.toLowerCase() ? this.curChar.toUpperCase() : this.curChar.toLowerCase());
+		this.exec('esc');
+	},
+
     /* complement */
     '/^%$/': function() {
         var pos = this.curDoc.cursor.position();
@@ -7313,7 +7257,441 @@ module.exports = {
 
 }
 
-},{"underscore":18}],25:[function(require,module,exports){
+},{"underscore":18}],16:[function(require,module,exports){
+(function(){var _ = require('underscore');
+var mark = require('../mark');
+
+
+/*
+
+	Visual mode is just text selection on top of command mode. Each keypress, simply maintain your range.
+
+*/
+
+//TODO absorb these elsewhere... Won't work with multiple vim instances
+var rangeStart,
+		originalCursorPosition = false;
+module.exports = {
+
+    /* Keys that pass through visual mode. Motion, mostly.  */
+	'/^((?![1-9])(?!esc|x|d|y|i|a|J|c|>|<|~|g~|gu|gU).*[^1-9]+.*)/': function(keys,vim, res) {
+        //Remember we're in the process of selecting
+		this.curDoc.selecting = true;
+
+		// "I" in visual block 
+		if(this.submode === 'block') {
+			/*if(keys === '$') {
+				var sel = this.curDoc.selection();
+				var firstPoint = ('line' in sel[0]) ? sel[0] : sel[0][0];
+				var startingColumn = firstPoint.char;				
+				var curLine = this.curDoc.getMark('<').line;
+				var finalLine = this.curDoc.getMark('>').line;
+				var newSelection = [];
+				while(curLine <= finalLine) {
+					var subRange = [ { line: curLine }, { line: curLine } ];
+					if(this.curDoc._lines[curLine].length > startingColumn) {
+						subRange[0].char = startingColumn;
+					} else {
+						subRange[0].char = 0;	
+					}
+					subRange[1].char = this.curDoc._lines[curLine].length;
+					newSelection.push(subRange);
+					curLine++;
+				}
+				this.curDoc.selection(newSelection);
+				return;
+			}*/
+			if(keys === 'C') {
+				this.exec('$');
+				this.exec('c');
+				return;
+			}
+			if(keys === 'I' || keys === 'A') {
+				this.submodeVerb = keys;
+				this.submode === '';
+				//Move to command mode
+				if(keys === 'A') {
+					var pos = this.curDoc.selection()[0][1];
+					pos.char--;
+					pos.col--;
+				}
+				this.exec('esc');
+				//Move to insert mode
+				if(keys === 'A') {
+					this.curDoc.cursor.position(pos);
+					this.exec('a');
+				} else {
+					this.exec('i');
+				}
+				//Ensure still block submode
+				this.submode = 'block';
+				return;
+			}
+		}
+
+
+		if(!originalCursorPosition) {
+			originalCursorPosition = this.curDoc.cursor.position();
+		}
+
+		this.lastMode = 'visual';
+
+		//execute the command in command mode
+		this.mode('command'); //dont use 'esc' as that is defined below to cancel the visual session
+		this.exec(keys);
+
+
+		// Re-adjust the selection if necessary
+		var pos = this.curDoc.cursor.position();
+
+		this.rangeEnd = pos;
+
+		var range = [JSON.parse(JSON.stringify(this.rangeStart)),JSON.parse(JSON.stringify(this.rangeEnd))];
+
+		//Reverse if not correct order. But rangeStart remains where it was.
+		if(this.rangeEnd.line < this.rangeStart.line || (this.rangeEnd.line === this.rangeStart.line && this.rangeEnd.char < this.rangeStart.char)) {
+			range = [range[1],range[0]];
+		}
+		range[1].char++;
+
+		// Store as marks; Augment with col as char is deprecated.
+        range[0].col = range[0].char;
+        range[0].mark = '<';
+        range[1].col = range[1].char;
+        range[1].mark = '>';
+
+
+        this.curDoc.addMark(range[0]);
+        this.curDoc.addMark(range[1]);
+
+		//Visual
+		if(this.submode === 'Visual') {
+			range[0].char = 0;
+			var line = this.curDoc.line(range[1].line);
+			range[1].char = this.curDoc.line(range[1].line).length;
+		}
+
+
+		// Block mode
+		if(this.submode === 'block') {
+			//Starting line
+			var curLine = range[0].line;
+			var lastLine = range[1].line;
+			// The first col of the selection
+			var firstCol, lastCol;
+			if(range[1].char <= range[0].char) {
+				firstCol = range[1].char-1;
+				lastCol = range[0].char+1;
+			} else {
+				firstCol = range[0].char;
+				lastCol = range[1].char;
+			}
+			//Redefine range as an array
+			blockRange = [];
+			while(curLine <= range[1].line) {
+				// If the range begins after the end of the line, skip it for now.
+				// TODO:handle $ edge case
+				if(firstCol >= this.curDoc._lines[curLine].length) {
+					curLine++;
+					continue;
+				};
+				var lastLineCol = Math.min(this.curDoc._lines[curLine].length,lastCol);
+				var pos = this.curDoc.cursor.position();
+				if(curLine === pos.line && lastLineCol === pos.col) { lastLineCol++; }
+
+				blockRange.push([
+					{
+						line: curLine,
+						char: firstCol,
+						col: firstCol
+					},
+					{
+						line: curLine,
+						char: lastLineCol,
+						col: lastLineCol
+					}
+				]);
+				curLine++;
+			}
+			if(blockRange.length === 1) blockRange = blockRange[0];
+			range = blockRange;
+		}
+
+
+		this.curDoc.selection(range);
+
+		//Assuming we can, move back to visual mode after executing.
+		//If we can't, must trust the mode to return us.
+		if(this.modeName === 'command') this.mode('visual');
+
+	},
+
+	/* OPERATORS
+
+
+	*/
+
+	'/^c$/': function() {
+		if(this.submode === 'block') {
+			var newSelection = JSON.parse(JSON.stringify(this.curDoc.selection()));
+			if('line' in newSelection[0]) { newSelection = [newSelection] }
+			_(newSelection).each(function(subRange,i) {
+				var newEnd = subRange[1];
+				newEnd.char++;
+				newEnd.col++;
+				newSelection[i][1] = newEnd;
+			});
+			this.exec('d');
+			this.exec('<C-v>');
+			this.curDoc.selection(newSelection);
+			this.exec('I');
+			return;
+		}
+		this.exec('d');
+		this.exec('i');
+	},
+
+    /* delete */
+	'/^d$/': function() {
+        var sel = this.curDoc.selection();
+		this.exec('y');
+        this.exec('v');
+        this.curDoc.selection(sel);
+
+
+		var doc = this.curDoc;
+
+		//Grab the selection
+		var range = doc.selection();
+
+		//Don't kill the line
+		//if(range[0].line === range[1].line &! doc.line(range[0].line).length) return;
+
+		doc.remove(range);
+		doc.selection('reset');
+
+		//Move to the beginning of the range
+		if(range[0].line >= doc._lines.length) {
+            var newLine = doc._lines.length-1;
+            if(newLine < 0) newLine = 0;
+			doc.cursor.line(newLine);
+		} else {
+			doc.cursor.line(range[0].line);
+		}
+		doc.cursor.char(range[0].char);
+		this.exec('esc');
+
+	},
+
+    /* yank */
+	'/^y$/': function() {
+		var selection = this.curDoc.getRange(this.curDoc.selection());
+		var index = this.currentRegister;
+		this.register(index,selection);
+        this.curDoc.cursor.position(this.curDoc.selection()[0]);
+        this.curDoc.selection('reset');
+        this.exec('esc');
+	},
+
+	/* swap case */
+	'/^~$/': function() {
+		this.exec('g~');
+	},
+
+
+	/* swap case */
+	'/^g~$/': function() {
+		var selection = this.curDoc.selection();
+		if(!selection[0].length) {
+			selection = [selection];
+		}
+		_(selection).each(function(subRange) {
+			var text = this.curDoc.getRange(subRange);
+			var newText = mark('');
+
+			for(var i = 0; i < text.length; i++) {
+				var newChar = (text[i] === text[i].toLowerCase()) ? text[i].toUpperCase() : text[i].toLowerCase() ;
+				newText = newText.concat(newChar);
+			}
+			this.curDoc.selection(selection);
+			this.curDoc.exec('d');
+			this.curDoc.exec('i');
+			this.exec(newText);
+			this.exec('esc');
+		},this);
+	},
+
+	/* make lowercase */
+	'/^gu$/': function() {
+		var selection = this.curDoc.selection();
+		if(!selection[0].length) {
+			selection = [selection];
+		}
+		_(selection).each(function(subRange) {
+			var text = this.curDoc.getRange(subRange);
+			var newText = mark('');
+
+			for(var i = 0; i < text.length; i++) {
+				var newChar = text[i].toLowerCase();
+				newText = newText.concat(newChar);
+			}
+			this.curDoc.selection(selection);
+			this.curDoc.exec('d');
+			this.curDoc.exec('i');
+			this.exec(newText);
+			this.exec('esc');
+		},this);
+	},
+
+	/* make uppercase */
+	'/^gU$/': function() {
+		var selection = this.curDoc.selection();
+		if(!selection[0].length) {
+			selection = [selection];
+		}
+		_(selection).each(function(subRange) {
+			var text = this.curDoc.getRange(subRange);
+			var newText = mark('');
+
+			for(var i = 0; i < text.length; i++) {
+				var newChar = text[i].toUpperCase();
+				newText = newText.concat(newChar);
+			}
+			this.curDoc.selection(selection);
+			this.curDoc.exec('d');
+			this.curDoc.exec('i');
+			this.exec(newText);
+			this.exec('esc');
+		},this);
+	},
+
+	/* filter through an external program */
+	'/^!$/': function() {
+	},
+
+
+	/* filter through 'equalprg' */
+	'/^=$/': function() {
+	},
+
+	/* text formatting */
+	'/^gq$/': function() {
+	},
+
+	/* ROT13 encoding */
+	'/^g?$/': function() {
+	},
+
+	/* shift right */
+	'/^>$/': function() {
+		var selection = this.curDoc.selection();
+		var ct = selection[1].line - selection[0].line + 1;
+		this.curDoc.cursor.line(selection[0].line)
+		while(ct > 0) {
+			this.exec('0');
+			this.mode('insert');
+			this.exec('\t')
+			this.mode('visual')
+			this.exec('j');
+			ct--
+		}
+		this.exec('esc');
+		this.exec('^');
+	},
+
+	/* shift left */
+	'/^<$/': function() {
+
+	},
+
+	/* define a fold */
+	'/^zf$/': function() {
+
+	},
+
+	/* call function set with the 'operatorfunc' option */
+	'/^g@$/': function() {
+
+	},
+
+	// Inner select
+	'/^([1-9]+[0-9]*)?(a|i)(w|W|s|S|p|\\]|\\[|\\(|\\)|b|>|<|t|\\{|\\}|"|\'|`)$/': function(keys, vim, match) {
+		var outer = match[2] === 'a';		
+		var count = 1;
+		if(match[1] && match[1].length) count = parseInt(match[1]);
+		var boundaries = [];
+		var boundaryMap = {
+			'w': ['b','e'],
+			'W': ['F ','f '],
+			'"': ['F"','f"'],
+			's': ['(',')'],
+			'(': ['F(','f)']
+		};
+
+		if(match[3] in boundaryMap) {
+			boundaries = boundaryMap[match[3]]
+		} else {
+			boundaries = [match[3],match[3]];
+		}
+
+		var moveIn = false
+		if(boundaries[0].substring(0,1) === 'F' && match[2] === 'i') {
+			boundaries[0] = 'T' + boundaries[0].substring(1);
+			boundaries[1] = 't' + boundaries[1].substring(1);
+		} else if(match[2] === 'i') { //fix this
+			moveIn = true;
+		}
+
+		if(boundaries.length) {
+			this.exec('esc');
+			var i = 0;
+			while(i++ < count) {
+				this.exec(boundaryMap[match[3]][0])
+			}
+			if(moveIn) this.exec('l');
+			this.exec('v');
+			var i = 0;
+			while(i++ < count) {
+				this.exec(boundaryMap[match[3]][1])
+			}
+
+			if(moveIn) this.exec('h');
+		}
+
+
+	},
+
+	'/^esc/': function(keys,vim) {
+		// Grab the last selection. Shitty to be cloning like this, but TODO fix.
+		this.lastSelection = JSON.parse(JSON.stringify(this.curDoc.selection()));
+		this.rangeStart = false;
+		this.curDoc.selection('reset');
+		this.curDoc.selecting = false;
+		this.curDoc.cursor.position(originalCursorPosition)
+		originalCursorPosition = false;
+		this.submode = false;
+	},
+
+	'/^(x)$/': function(keys, vim) {
+		this.exec('d');
+	},
+
+	'/^(J)$/': function(keys, vim) {
+		var range = this.curDoc.selection();
+		var ct = range[1].line - range[0].line || 1; //do first join ANYWAYS
+
+		//Move to the beginning
+		this.curDoc.cursor.line(range[0].line);
+		this.exec('esc');
+		while(ct--) {
+			this.exec('J');
+		}
+	}
+};
+
+
+})()
+},{"../mark":11,"underscore":18}],25:[function(require,module,exports){
 var hex2rgbString = require('rgb'),
 	x256 = require('x256'),
 	rgbRegExp = /(\d+),(\d+),(\d+)/;
@@ -7461,7 +7839,7 @@ function hex2Address(hex) {
 
 module.exports = mauve;
 
-},{"x256":26,"rgb":27}],27:[function(require,module,exports){
+},{"rgb":26,"x256":27}],26:[function(require,module,exports){
 /*
 color
 */"use strict"
@@ -7599,7 +7977,7 @@ color.matches = function(string){
 
 module.exports = color
 
-},{}],26:[function(require,module,exports){
+},{}],27:[function(require,module,exports){
 // colors scraped from
 // http://www.calmar.ws/vim/256-xterm-24bit-rgb-color-chart.html
 // %s/ *\d\+ \+#\([^ ]\+\)/\1\r/g
