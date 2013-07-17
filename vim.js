@@ -1691,7 +1691,123 @@ Vim.prototype.Doc = Doc;
 
 module.exports = Vim;
 
-},{"./mark":11,"./Doc":12,"./View":13,"./modes/insert":14,"./modes/command":15,"./modes/search":9,"./modes/visual":16,"./modes/ex":10,"underscore":17,"get-set":18,"js-vim-command":19,"diff_match_patch":20}],17:[function(require,module,exports){
+},{"./mark":11,"./Doc":12,"./View":13,"./modes/insert":14,"./modes/command":15,"./modes/search":9,"./modes/visual":16,"./modes/ex":10,"get-set":17,"underscore":18,"js-vim-command":19,"diff_match_patch":20}],21:[function(require,module,exports){
+module.exports = function() {};
+
+/** 
+ * Add a listener by event name
+ * @param {String} name
+ * @param {Function} fn
+ * @return {Event} instance
+ * @api public
+ */
+module.exports.prototype.on = function(name, fn) {
+
+	//Lazy instanciation of events object
+	var events = this.events = this.events || {};
+
+	//Lazy instanciation of specific event
+	events[name] = events[name] || [];
+
+	//Give it the function
+	events[name].push(fn);
+
+	return this;
+
+};
+
+
+/** 
+ * Trigger an event by name, passing arguments
+ *
+ * @param {String} name
+ * @return {Event} instance
+ * @api public
+ */
+module.exports.prototype.trigger = function(name, arg1, arg2 /** ... */ ) {
+
+	//Only if events + this event exist...
+	if (!this.events || !this.events[name]) return this;
+
+	//Grab the listeners
+	var listeners = this.events[name],
+		//All arguments after the name should be passed to the function
+		args = Array.prototype.slice.call(arguments, 1);
+
+	//So we can efficiently apply below
+
+	function triggerFunction(fn) {
+		fn.apply(this, args);
+	};
+
+	if ('forEach' in listeners) {
+		listeners.forEach(triggerFunction.bind(this));
+	} else {
+		for (var i in listeners) {
+			if (listeners.hasOwnProperty(i)) triggerFunction(fn);
+		}
+	}
+
+	return this;
+
+};
+
+},{}],22:[function(require,module,exports){
+var Undo = module.exports = function() {
+	this._history = [];
+	this.position = 0;
+};
+
+/** Add a state
+ *
+ * N.B.: this.position can use some conceptual explanation.
+ * At its root, position is the state that you are presently in.
+ * Undo.add is not used when you have completed a change, but when you are about to initiate a change. Therefore it's appropriate that insert the state at your current position, then increment position into a state that is not defined in _history.
+ */
+Undo.prototype.add = function(ev) {
+
+	//Don't add additional identical states.
+	if (this.position && typeof ev !== 'string' && 'cursor' in ev && 'text' in ev) {
+		var current = this._history.slice(this.position - 1, this.position)[0];
+		var next = this._history.slice(this.position, this.position + 1);
+		next = next.length ? next[0] : false;
+		if (areSame(ev, current) || (next && areSame(ev, next))) {
+			return;
+		}
+	}
+
+	this._history.splice(this.position);
+	this._history.push(ev);
+	this.position++;
+	return true;
+};
+
+function areSame(ev1, ev2) {
+	return (ev1.text === ev2.text);
+}
+
+/** Retrieve a state and move the current "position" to there
+ */
+Undo.prototype.get = function(index) {
+	if (index < 0 || index >= this._history.length) return;
+	var state = this._history.slice(index, index + 1)[0];
+	this.position = index;
+	return state;
+};
+
+/** Retrieve the previous state
+ */
+Undo.prototype.last = function() {
+	return this.get(this.position - 1);
+};
+
+/** Retrieve the next state
+ */
+Undo.prototype.next = function() {
+	return this.get(this.position + 1);
+};
+
+},{}],18:[function(require,module,exports){
 (function(){//     Underscore.js 1.4.4
 //     http://underscorejs.org
 //     (c) 2009-2013 Jeremy Ashkenas, DocumentCloud Inc.
@@ -2920,122 +3036,6 @@ module.exports = Vim;
 }).call(this);
 
 })()
-},{}],21:[function(require,module,exports){
-var Undo = module.exports = function() {
-	this._history = [];
-	this.position = 0;
-};
-
-/** Add a state
- *
- * N.B.: this.position can use some conceptual explanation.
- * At its root, position is the state that you are presently in.
- * Undo.add is not used when you have completed a change, but when you are about to initiate a change. Therefore it's appropriate that insert the state at your current position, then increment position into a state that is not defined in _history.
- */
-Undo.prototype.add = function(ev) {
-
-	//Don't add additional identical states.
-	if (this.position && typeof ev !== 'string' && 'cursor' in ev && 'text' in ev) {
-		var current = this._history.slice(this.position - 1, this.position)[0];
-		var next = this._history.slice(this.position, this.position + 1);
-		next = next.length ? next[0] : false;
-		if (areSame(ev, current) || (next && areSame(ev, next))) {
-			return;
-		}
-	}
-
-	this._history.splice(this.position);
-	this._history.push(ev);
-	this.position++;
-	return true;
-};
-
-function areSame(ev1, ev2) {
-	return (ev1.text === ev2.text);
-}
-
-/** Retrieve a state and move the current "position" to there
- */
-Undo.prototype.get = function(index) {
-	if (index < 0 || index >= this._history.length) return;
-	var state = this._history.slice(index, index + 1)[0];
-	this.position = index;
-	return state;
-};
-
-/** Retrieve the previous state
- */
-Undo.prototype.last = function() {
-	return this.get(this.position - 1);
-};
-
-/** Retrieve the next state
- */
-Undo.prototype.next = function() {
-	return this.get(this.position + 1);
-};
-
-},{}],22:[function(require,module,exports){
-module.exports = function() {};
-
-/** 
- * Add a listener by event name
- * @param {String} name
- * @param {Function} fn
- * @return {Event} instance
- * @api public
- */
-module.exports.prototype.on = function(name, fn) {
-
-	//Lazy instanciation of events object
-	var events = this.events = this.events || {};
-
-	//Lazy instanciation of specific event
-	events[name] = events[name] || [];
-
-	//Give it the function
-	events[name].push(fn);
-
-	return this;
-
-};
-
-
-/** 
- * Trigger an event by name, passing arguments
- *
- * @param {String} name
- * @return {Event} instance
- * @api public
- */
-module.exports.prototype.trigger = function(name, arg1, arg2 /** ... */ ) {
-
-	//Only if events + this event exist...
-	if (!this.events || !this.events[name]) return this;
-
-	//Grab the listeners
-	var listeners = this.events[name],
-		//All arguments after the name should be passed to the function
-		args = Array.prototype.slice.call(arguments, 1);
-
-	//So we can efficiently apply below
-
-	function triggerFunction(fn) {
-		fn.apply(this, args);
-	};
-
-	if ('forEach' in listeners) {
-		listeners.forEach(triggerFunction.bind(this));
-	} else {
-		for (var i in listeners) {
-			if (listeners.hasOwnProperty(i)) triggerFunction(fn);
-		}
-	}
-
-	return this;
-
-};
-
 },{}],19:[function(require,module,exports){
 var Parser = function() {};
 
@@ -5285,7 +5285,7 @@ exports['DIFF_INSERT'] = DIFF_INSERT;
 exports['DIFF_EQUAL'] = DIFF_EQUAL;
 
 })()
-},{}],18:[function(require,module,exports){
+},{}],17:[function(require,module,exports){
 var Event = require('./lib/event')
 
 var Set = module.exports = function() {}
@@ -5307,78 +5307,7 @@ Set.prototype.get = function(k) {
 	return this[k]
 };
 
-},{"./lib/event":23}],11:[function(require,module,exports){
-var _ = require('underscore');
-//http://blog.elliotjameschong.com/2012/10/10/underscore-js-deepclone-and-deepextend-mix-ins/ thanks!
-_.mixin({
-	deepClone: function(p_object) {
-		return JSON.parse(JSON.stringify(p_object));
-	}
-});
-
-function shallowCopy(obj) {
-	var newObj = {};
-	for (var i in obj) {
-		if (obj.hasOwnProperty(i)) {
-			newObj[i] = obj[i]
-		}
-	}
-	return newObj;
-}
-
-
-var mark = module.exports = function(str, mk) {
-	if (str.marks & !mk) return str;
-	var tmpStr = new String(str);
-	tmpStr.marks = [];
-	if (str.marks) tmpStr.marks = _.deepClone(str.marks);
-	str = tmpStr;
-	if (mk) {
-		if ('length' in mk) {
-			if (mk.length) {
-				str.marks = mk;
-			}
-		} else {
-			str.marks.push(mk);
-		}
-	}
-	str._substring = str._substring || str.substring;
-	str.substring = function(from, to) {
-		if (from === to) return mark('');
-		var newString = mark(str._substring.apply(str, arguments));
-		for (var i in str.marks) {
-			if (str.marks.hasOwnProperty(i)) {
-				if (str.marks[i].col >= from && ((!to && to !== 0) || str.marks[i].col < to)) {
-					var newMark = shallowCopy(str.marks[i]);
-					newMark.col = str.marks[i].col - from;
-					newString.marks.push(newMark);
-				}
-			}
-		}
-		if (newString.length > (to - from)) throw "awwww";
-		return newString;
-	}
-
-	str._concat = str.concat;
-	str.concat = function(incomingStr) {
-		var marks = str.marks;
-
-		if (incomingStr.marks && incomingStr.marks.length) {
-			for (var i in incomingStr.marks) {
-				if (incomingStr.marks.hasOwnProperty(i)) {
-					var newMark = incomingStr.marks[i];
-					newMark.col += str.length;
-					marks.push(newMark);
-				}
-			}
-		}
-		return mark(str._concat(incomingStr), marks);
-	};
-
-	return str;
-};
-
-},{"underscore":17}],24:[function(require,module,exports){
+},{"./lib/event":23}],24:[function(require,module,exports){
 var Event = require('./Event');
 
 var Cursor = function(obj) {
@@ -5452,7 +5381,78 @@ Cursor.prototype.position = function(pos) {
 
 module.exports = Cursor;
 
-},{"./Event":22}],12:[function(require,module,exports){
+},{"./Event":21}],11:[function(require,module,exports){
+var _ = require('underscore');
+//http://blog.elliotjameschong.com/2012/10/10/underscore-js-deepclone-and-deepextend-mix-ins/ thanks!
+_.mixin({
+	deepClone: function(p_object) {
+		return JSON.parse(JSON.stringify(p_object));
+	}
+});
+
+function shallowCopy(obj) {
+	var newObj = {};
+	for (var i in obj) {
+		if (obj.hasOwnProperty(i)) {
+			newObj[i] = obj[i]
+		}
+	}
+	return newObj;
+}
+
+
+var mark = module.exports = function(str, mk) {
+	if (str.marks & !mk) return str;
+	var tmpStr = new String(str);
+	tmpStr.marks = [];
+	if (str.marks) tmpStr.marks = _.deepClone(str.marks);
+	str = tmpStr;
+	if (mk) {
+		if ('length' in mk) {
+			if (mk.length) {
+				str.marks = mk;
+			}
+		} else {
+			str.marks.push(mk);
+		}
+	}
+	str._substring = str._substring || str.substring;
+	str.substring = function(from, to) {
+		if (from === to) return mark('');
+		var newString = mark(str._substring.apply(str, arguments));
+		for (var i in str.marks) {
+			if (str.marks.hasOwnProperty(i)) {
+				if (str.marks[i].col >= from && ((!to && to !== 0) || str.marks[i].col < to)) {
+					var newMark = shallowCopy(str.marks[i]);
+					newMark.col = str.marks[i].col - from;
+					newString.marks.push(newMark);
+				}
+			}
+		}
+		if (newString.length > (to - from)) throw "awwww";
+		return newString;
+	}
+
+	str._concat = str.concat;
+	str.concat = function(incomingStr) {
+		var marks = str.marks;
+
+		if (incomingStr.marks && incomingStr.marks.length) {
+			for (var i in incomingStr.marks) {
+				if (incomingStr.marks.hasOwnProperty(i)) {
+					var newMark = incomingStr.marks[i];
+					newMark.col += str.length;
+					marks.push(newMark);
+				}
+			}
+		}
+		return mark(str._concat(incomingStr), marks);
+	};
+
+	return str;
+};
+
+},{"underscore":18}],12:[function(require,module,exports){
 (function(){var Cursor = require('./Cursor');
 var _ = require('underscore');
 
@@ -5933,7 +5933,7 @@ Doc.prototype.exec = function() {
 module.exports = Doc;
 
 })()
-},{"./Cursor":24,"./mark":11,"./Event":22,"./Undo":21,"underscore":17}],13:[function(require,module,exports){
+},{"./Cursor":24,"./mark":11,"./Event":21,"./Undo":22,"underscore":18}],13:[function(require,module,exports){
 var _ = require('underscore'),
 	Set = require('get-set');
 
@@ -6303,7 +6303,7 @@ View.prototype.notify = function(text) {
 	this.trigger('change:status');
 }
 
-},{"get-set":18,"mauve":25,"underscore":17}],23:[function(require,module,exports){
+},{"underscore":18,"get-set":17,"mauve":25}],23:[function(require,module,exports){
 module.exports = function() {};
 
 /** 
@@ -6362,7 +6362,130 @@ module.exports.prototype.trigger = function(name, arg1, arg2 /** ... */) {
   return this;
 
 };
-},{}],15:[function(require,module,exports){
+},{}],14:[function(require,module,exports){
+var _ = require('underscore');
+var mark = require('../mark');
+
+module.exports = {
+
+	/* Any time you receive multiple keys in one go */
+	'/^((?!\b|esc)[\\w\\W][\\w\\W]+)$/': function(keys, vim) {
+		for (var i = 0; i < keys.length; i++) {
+			this.exec(keys.substring(i, i + 1));
+		}
+	},
+
+	'/^((?!\b|esc|}).)$/': function(keys, vim, match) {
+		this.currentInsertedText += keys
+		vim.insert(keys);
+	},
+
+	'/^}$/': function() {
+		if (this.rc.smartindent && this.curDoc._lines[this.curDoc.cursor.line()].match(/^\s*$/)) {
+			var ct = this.rc.tabstop;
+			this.exec('esc');
+			while (ct--) {
+				this.exec('X');
+			}
+			this.exec('i');
+		}
+		this.insert('}');
+
+	},
+
+	'/^\n$/': function(keys) {
+		this.currentInsertedText += keys;
+		if (!this.rc.smartindent || this.curDoc._lines[this.curDoc.cursor.line()].length === 0) {
+			this.insert('\n');
+		} else {
+			var thisLine = this.curDoc._lines[this.curDoc.cursor.line()];
+			var indent = thisLine.match(/{\s*(?:\/\/.*|\/\*.*\*\/\s*)?$/);
+			curChar = this.curDoc.cursor.char();
+			var currentText = this.currentInsertedText;
+			this.exec('esc');
+			this.exec('^');
+
+			//Assume you're indenting to the first non-blank char
+			var ct = this.curDoc.cursor.char();
+			//Unless it's all blank, then to zero.
+			if (thisLine.match(/^\s*$/)) {
+				ct = 0;
+			}
+
+			this.curDoc.cursor.char(curChar);
+			this.insert('\n');
+
+			if (indent) {
+				ct += this.rc.tabstop;
+			}
+			this.exec('i');
+			this.currentInsertedText = currentText;
+			while (ct-- > 0) {
+				this.exec(' ');
+			}
+		}
+	},
+
+	'/^(\b)$/': function(keys, vim) {
+		if (this.currentInsertedText.length) this.currentInsertedText = this.currentInsertedText.substring(0, this.currentInsertedText.length - 1);
+		var atZero = !vim.curDoc.cursor.char()
+		vim.exec('esc');
+
+		//Only backspace if there's somewhere to go.
+		if (atZero & !vim.curDoc.cursor.line()) return;
+
+		//Do a join if at the beginning (i.e., deleting a carriage return)		
+		if (atZero && vim.curDoc.cursor.line()) {
+			vim.exec('k');
+			vim.exec('J');
+			vim.exec('x');
+		} else {
+			//Otherwise just erase the character. This works because "esc" from insert decrements the cursor.
+			vim.exec('x');
+		}
+		vim.exec('i');
+	},
+	'/^esc/': function(keys, vim) {
+		//Handle text
+
+		vim.mode('command');
+		vim.exec('h');
+
+		if (this.submode === 'block' & !this.currentInsertedText.match(/\n/)) {
+			this.submode = '';
+			var lastText = this.currentInsertedText;
+			//For each line that was a part of that block selection
+			var meaningfulSelection = this.lastSelection.slice(1);
+			_(meaningfulSelection).each(function(range) {
+				//Move to the beginning of the selection on that line
+				if (this.submodeVerb === 'I') {
+					this.curDoc.cursor.position(range[0]);
+					this.exec('i');
+				} else if (this.submodeVerb === 'A') {
+					var newPos = range[1];
+					newPos.char--;
+					newPos.col--;
+					this.curDoc.cursor.position(range[1]);
+					this.exec('a');
+				}
+				this.exec(lastText);
+				this.exec('esc');
+			}, this);
+			this.curDoc.cursor.position(this.lastSelection[0][0]);
+
+		}
+
+		this.register('.', this.currentInsertedText);
+		this.currentInsertedText = this.currentInsertedText.substring(0, 0);
+
+
+
+	},
+
+
+};
+
+},{"../mark":11,"underscore":18}],15:[function(require,module,exports){
 var _ = require('underscore');
 
 module.exports = {
@@ -7173,7 +7296,7 @@ module.exports = {
 
 }
 
-},{"underscore":17}],16:[function(require,module,exports){
+},{"underscore":18}],16:[function(require,module,exports){
 (function(){var _ = require('underscore');
 var mark = require('../mark');
 
@@ -7603,130 +7726,7 @@ module.exports = {
 };
 
 })()
-},{"../mark":11,"underscore":17}],14:[function(require,module,exports){
-var _ = require('underscore');
-var mark = require('../mark');
-
-module.exports = {
-
-	/* Any time you receive multiple keys in one go */
-	'/^((?!\b|esc)[\\w\\W][\\w\\W]+)$/': function(keys, vim) {
-		for (var i = 0; i < keys.length; i++) {
-			this.exec(keys.substring(i, i + 1));
-		}
-	},
-
-	'/^((?!\b|esc|}).)$/': function(keys, vim, match) {
-		this.currentInsertedText += keys
-		vim.insert(keys);
-	},
-
-	'/^}$/': function() {
-		if (this.rc.smartindent && this.curDoc._lines[this.curDoc.cursor.line()].match(/^\s*$/)) {
-			var ct = this.rc.tabstop;
-			this.exec('esc');
-			while (ct--) {
-				this.exec('X');
-			}
-			this.exec('i');
-		}
-		this.insert('}');
-
-	},
-
-	'/^\n$/': function(keys) {
-		this.currentInsertedText += keys;
-		if (!this.rc.smartindent || this.curDoc._lines[this.curDoc.cursor.line()].length === 0) {
-			this.insert('\n');
-		} else {
-			var thisLine = this.curDoc._lines[this.curDoc.cursor.line()];
-			var indent = thisLine.match(/{\s*(?:\/\/.*|\/\*.*\*\/\s*)?$/);
-			curChar = this.curDoc.cursor.char();
-			var currentText = this.currentInsertedText;
-			this.exec('esc');
-			this.exec('^');
-
-			//Assume you're indenting to the first non-blank char
-			var ct = this.curDoc.cursor.char();
-			//Unless it's all blank, then to zero.
-			if (thisLine.match(/^\s*$/)) {
-				ct = 0;
-			}
-
-			this.curDoc.cursor.char(curChar);
-			this.insert('\n');
-
-			if (indent) {
-				ct += this.rc.tabstop;
-			}
-			this.exec('i');
-			this.currentInsertedText = currentText;
-			while (ct-- > 0) {
-				this.exec(' ');
-			}
-		}
-	},
-
-	'/^(\b)$/': function(keys, vim) {
-		if (this.currentInsertedText.length) this.currentInsertedText = this.currentInsertedText.substring(0, this.currentInsertedText.length - 1);
-		var atZero = !vim.curDoc.cursor.char()
-		vim.exec('esc');
-
-		//Only backspace if there's somewhere to go.
-		if (atZero & !vim.curDoc.cursor.line()) return;
-
-		//Do a join if at the beginning (i.e., deleting a carriage return)		
-		if (atZero && vim.curDoc.cursor.line()) {
-			vim.exec('k');
-			vim.exec('J');
-			vim.exec('x');
-		} else {
-			//Otherwise just erase the character. This works because "esc" from insert decrements the cursor.
-			vim.exec('x');
-		}
-		vim.exec('i');
-	},
-	'/^esc/': function(keys, vim) {
-		//Handle text
-
-		vim.mode('command');
-		vim.exec('h');
-
-		if (this.submode === 'block' & !this.currentInsertedText.match(/\n/)) {
-			this.submode = '';
-			var lastText = this.currentInsertedText;
-			//For each line that was a part of that block selection
-			var meaningfulSelection = this.lastSelection.slice(1);
-			_(meaningfulSelection).each(function(range) {
-				//Move to the beginning of the selection on that line
-				if (this.submodeVerb === 'I') {
-					this.curDoc.cursor.position(range[0]);
-					this.exec('i');
-				} else if (this.submodeVerb === 'A') {
-					var newPos = range[1];
-					newPos.char--;
-					newPos.col--;
-					this.curDoc.cursor.position(range[1]);
-					this.exec('a');
-				}
-				this.exec(lastText);
-				this.exec('esc');
-			}, this);
-			this.curDoc.cursor.position(this.lastSelection[0][0]);
-
-		}
-
-		this.register('.', this.currentInsertedText);
-		this.currentInsertedText = this.currentInsertedText.substring(0, 0);
-
-
-
-	},
-
-
-};
-
-},{"../mark":11,"underscore":17}],25:[function(require,module,exports){
+},{"../mark":11,"underscore":18}],25:[function(require,module,exports){
 var hex2rgbString = require('rgb'),
 	x256 = require('x256'),
 	rgbRegExp = /(\d+),(\d+),(\d+)/;
