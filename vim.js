@@ -1691,123 +1691,7 @@ Vim.prototype.Doc = Doc;
 
 module.exports = Vim;
 
-},{"./mark":11,"./Doc":12,"./View":13,"./modes/insert":14,"./modes/command":15,"./modes/search":9,"./modes/visual":16,"./modes/ex":10,"get-set":17,"underscore":18,"js-vim-command":19,"diff_match_patch":20}],21:[function(require,module,exports){
-module.exports = function() {};
-
-/** 
- * Add a listener by event name
- * @param {String} name
- * @param {Function} fn
- * @return {Event} instance
- * @api public
- */
-module.exports.prototype.on = function(name, fn) {
-
-	//Lazy instanciation of events object
-	var events = this.events = this.events || {};
-
-	//Lazy instanciation of specific event
-	events[name] = events[name] || [];
-
-	//Give it the function
-	events[name].push(fn);
-
-	return this;
-
-};
-
-
-/** 
- * Trigger an event by name, passing arguments
- *
- * @param {String} name
- * @return {Event} instance
- * @api public
- */
-module.exports.prototype.trigger = function(name, arg1, arg2 /** ... */ ) {
-
-	//Only if events + this event exist...
-	if (!this.events || !this.events[name]) return this;
-
-	//Grab the listeners
-	var listeners = this.events[name],
-		//All arguments after the name should be passed to the function
-		args = Array.prototype.slice.call(arguments, 1);
-
-	//So we can efficiently apply below
-
-	function triggerFunction(fn) {
-		fn.apply(this, args);
-	};
-
-	if ('forEach' in listeners) {
-		listeners.forEach(triggerFunction.bind(this));
-	} else {
-		for (var i in listeners) {
-			if (listeners.hasOwnProperty(i)) triggerFunction(fn);
-		}
-	}
-
-	return this;
-
-};
-
-},{}],22:[function(require,module,exports){
-var Undo = module.exports = function() {
-	this._history = [];
-	this.position = 0;
-};
-
-/** Add a state
- *
- * N.B.: this.position can use some conceptual explanation.
- * At its root, position is the state that you are presently in.
- * Undo.add is not used when you have completed a change, but when you are about to initiate a change. Therefore it's appropriate that insert the state at your current position, then increment position into a state that is not defined in _history.
- */
-Undo.prototype.add = function(ev) {
-
-	//Don't add additional identical states.
-	if (this.position && typeof ev !== 'string' && 'cursor' in ev && 'text' in ev) {
-		var current = this._history.slice(this.position - 1, this.position)[0];
-		var next = this._history.slice(this.position, this.position + 1);
-		next = next.length ? next[0] : false;
-		if (areSame(ev, current) || (next && areSame(ev, next))) {
-			return;
-		}
-	}
-
-	this._history.splice(this.position);
-	this._history.push(ev);
-	this.position++;
-	return true;
-};
-
-function areSame(ev1, ev2) {
-	return (ev1.text === ev2.text);
-}
-
-/** Retrieve a state and move the current "position" to there
- */
-Undo.prototype.get = function(index) {
-	if (index < 0 || index >= this._history.length) return;
-	var state = this._history.slice(index, index + 1)[0];
-	this.position = index;
-	return state;
-};
-
-/** Retrieve the previous state
- */
-Undo.prototype.last = function() {
-	return this.get(this.position - 1);
-};
-
-/** Retrieve the next state
- */
-Undo.prototype.next = function() {
-	return this.get(this.position + 1);
-};
-
-},{}],18:[function(require,module,exports){
+},{"./mark":11,"./Doc":12,"./View":13,"./modes/insert":14,"./modes/command":15,"./modes/search":9,"./modes/visual":16,"./modes/ex":10,"get-set":17,"underscore":18,"js-vim-command":19,"diff_match_patch":20}],18:[function(require,module,exports){
 (function(){//     Underscore.js 1.4.4
 //     http://underscorejs.org
 //     (c) 2009-2013 Jeremy Ashkenas, DocumentCloud Inc.
@@ -3036,6 +2920,122 @@ Undo.prototype.next = function() {
 }).call(this);
 
 })()
+},{}],21:[function(require,module,exports){
+module.exports = function() {};
+
+/** 
+ * Add a listener by event name
+ * @param {String} name
+ * @param {Function} fn
+ * @return {Event} instance
+ * @api public
+ */
+module.exports.prototype.on = function(name, fn) {
+
+	//Lazy instanciation of events object
+	var events = this.events = this.events || {};
+
+	//Lazy instanciation of specific event
+	events[name] = events[name] || [];
+
+	//Give it the function
+	events[name].push(fn);
+
+	return this;
+
+};
+
+
+/** 
+ * Trigger an event by name, passing arguments
+ *
+ * @param {String} name
+ * @return {Event} instance
+ * @api public
+ */
+module.exports.prototype.trigger = function(name, arg1, arg2 /** ... */ ) {
+
+	//Only if events + this event exist...
+	if (!this.events || !this.events[name]) return this;
+
+	//Grab the listeners
+	var listeners = this.events[name],
+		//All arguments after the name should be passed to the function
+		args = Array.prototype.slice.call(arguments, 1);
+
+	//So we can efficiently apply below
+
+	function triggerFunction(fn) {
+		fn.apply(this, args);
+	};
+
+	if ('forEach' in listeners) {
+		listeners.forEach(triggerFunction.bind(this));
+	} else {
+		for (var i in listeners) {
+			if (listeners.hasOwnProperty(i)) triggerFunction(fn);
+		}
+	}
+
+	return this;
+
+};
+
+},{}],22:[function(require,module,exports){
+var Undo = module.exports = function() {
+	this._history = [];
+	this.position = 0;
+};
+
+/** Add a state
+ *
+ * N.B.: this.position can use some conceptual explanation.
+ * At its root, position is the state that you are presently in.
+ * Undo.add is not used when you have completed a change, but when you are about to initiate a change. Therefore it's appropriate that insert the state at your current position, then increment position into a state that is not defined in _history.
+ */
+Undo.prototype.add = function(ev) {
+
+	//Don't add additional identical states.
+	if (this.position && typeof ev !== 'string' && 'cursor' in ev && 'text' in ev) {
+		var current = this._history.slice(this.position - 1, this.position)[0];
+		var next = this._history.slice(this.position, this.position + 1);
+		next = next.length ? next[0] : false;
+		if (areSame(ev, current) || (next && areSame(ev, next))) {
+			return;
+		}
+	}
+
+	this._history.splice(this.position);
+	this._history.push(ev);
+	this.position++;
+	return true;
+};
+
+function areSame(ev1, ev2) {
+	return (ev1.text === ev2.text);
+}
+
+/** Retrieve a state and move the current "position" to there
+ */
+Undo.prototype.get = function(index) {
+	if (index < 0 || index >= this._history.length) return;
+	var state = this._history.slice(index, index + 1)[0];
+	this.position = index;
+	return state;
+};
+
+/** Retrieve the previous state
+ */
+Undo.prototype.last = function() {
+	return this.get(this.position - 1);
+};
+
+/** Retrieve the next state
+ */
+Undo.prototype.next = function() {
+	return this.get(this.position + 1);
+};
+
 },{}],19:[function(require,module,exports){
 var Parser = function() {};
 
@@ -5307,7 +5307,78 @@ Set.prototype.get = function(k) {
 	return this[k]
 };
 
-},{"./lib/event":23}],24:[function(require,module,exports){
+},{"./lib/event":23}],11:[function(require,module,exports){
+var _ = require('underscore');
+//http://blog.elliotjameschong.com/2012/10/10/underscore-js-deepclone-and-deepextend-mix-ins/ thanks!
+_.mixin({
+	deepClone: function(p_object) {
+		return JSON.parse(JSON.stringify(p_object));
+	}
+});
+
+function shallowCopy(obj) {
+	var newObj = {};
+	for (var i in obj) {
+		if (obj.hasOwnProperty(i)) {
+			newObj[i] = obj[i]
+		}
+	}
+	return newObj;
+}
+
+
+var mark = module.exports = function(str, mk) {
+	if (str.marks & !mk) return str;
+	var tmpStr = new String(str);
+	tmpStr.marks = [];
+	if (str.marks) tmpStr.marks = _.deepClone(str.marks);
+	str = tmpStr;
+	if (mk) {
+		if ('length' in mk) {
+			if (mk.length) {
+				str.marks = mk;
+			}
+		} else {
+			str.marks.push(mk);
+		}
+	}
+	str._substring = str._substring || str.substring;
+	str.substring = function(from, to) {
+		if (from === to) return mark('');
+		var newString = mark(str._substring.apply(str, arguments));
+		for (var i in str.marks) {
+			if (str.marks.hasOwnProperty(i)) {
+				if (str.marks[i].col >= from && ((!to && to !== 0) || str.marks[i].col < to)) {
+					var newMark = shallowCopy(str.marks[i]);
+					newMark.col = str.marks[i].col - from;
+					newString.marks.push(newMark);
+				}
+			}
+		}
+		if (newString.length > (to - from)) throw "awwww";
+		return newString;
+	}
+
+	str._concat = str.concat;
+	str.concat = function(incomingStr) {
+		var marks = str.marks;
+
+		if (incomingStr.marks && incomingStr.marks.length) {
+			for (var i in incomingStr.marks) {
+				if (incomingStr.marks.hasOwnProperty(i)) {
+					var newMark = incomingStr.marks[i];
+					newMark.col += str.length;
+					marks.push(newMark);
+				}
+			}
+		}
+		return mark(str._concat(incomingStr), marks);
+	};
+
+	return str;
+};
+
+},{"underscore":18}],24:[function(require,module,exports){
 var Event = require('./Event');
 
 var Cursor = function(obj) {
@@ -5381,78 +5452,7 @@ Cursor.prototype.position = function(pos) {
 
 module.exports = Cursor;
 
-},{"./Event":21}],11:[function(require,module,exports){
-var _ = require('underscore');
-//http://blog.elliotjameschong.com/2012/10/10/underscore-js-deepclone-and-deepextend-mix-ins/ thanks!
-_.mixin({
-	deepClone: function(p_object) {
-		return JSON.parse(JSON.stringify(p_object));
-	}
-});
-
-function shallowCopy(obj) {
-	var newObj = {};
-	for (var i in obj) {
-		if (obj.hasOwnProperty(i)) {
-			newObj[i] = obj[i]
-		}
-	}
-	return newObj;
-}
-
-
-var mark = module.exports = function(str, mk) {
-	if (str.marks & !mk) return str;
-	var tmpStr = new String(str);
-	tmpStr.marks = [];
-	if (str.marks) tmpStr.marks = _.deepClone(str.marks);
-	str = tmpStr;
-	if (mk) {
-		if ('length' in mk) {
-			if (mk.length) {
-				str.marks = mk;
-			}
-		} else {
-			str.marks.push(mk);
-		}
-	}
-	str._substring = str._substring || str.substring;
-	str.substring = function(from, to) {
-		if (from === to) return mark('');
-		var newString = mark(str._substring.apply(str, arguments));
-		for (var i in str.marks) {
-			if (str.marks.hasOwnProperty(i)) {
-				if (str.marks[i].col >= from && ((!to && to !== 0) || str.marks[i].col < to)) {
-					var newMark = shallowCopy(str.marks[i]);
-					newMark.col = str.marks[i].col - from;
-					newString.marks.push(newMark);
-				}
-			}
-		}
-		if (newString.length > (to - from)) throw "awwww";
-		return newString;
-	}
-
-	str._concat = str.concat;
-	str.concat = function(incomingStr) {
-		var marks = str.marks;
-
-		if (incomingStr.marks && incomingStr.marks.length) {
-			for (var i in incomingStr.marks) {
-				if (incomingStr.marks.hasOwnProperty(i)) {
-					var newMark = incomingStr.marks[i];
-					newMark.col += str.length;
-					marks.push(newMark);
-				}
-			}
-		}
-		return mark(str._concat(incomingStr), marks);
-	};
-
-	return str;
-};
-
-},{"underscore":18}],12:[function(require,module,exports){
+},{"./Event":21}],12:[function(require,module,exports){
 (function(){var Cursor = require('./Cursor');
 var _ = require('underscore');
 
@@ -7874,7 +7874,7 @@ function hex2Address(hex) {
 
 module.exports = mauve;
 
-},{"rgb":26,"x256":27}],26:[function(require,module,exports){
+},{"x256":26,"rgb":27}],27:[function(require,module,exports){
 /*
 color
 */"use strict"
@@ -8012,7 +8012,7 @@ color.matches = function(string){
 
 module.exports = color
 
-},{}],27:[function(require,module,exports){
+},{}],26:[function(require,module,exports){
 // colors scraped from
 // http://www.calmar.ws/vim/256-xterm-24bit-rgb-color-chart.html
 // %s/ *\d\+ \+#\([^ ]\+\)/\1\r/g
