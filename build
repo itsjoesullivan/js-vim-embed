@@ -1,5 +1,7 @@
 style=`sass --style compressed style.scss`
 echo "module.exports = '$style';" > style.css
-browserify index.js > vim.js
+cat HEADER.js > vim.js
+cat HEADER.js > vim.min.js
+browserify index.js >> vim.js
 rm style.css
-uglifyjs vim.js > vim.min.js
+uglifyjs vim.js >> vim.min.js
