@@ -159,7 +159,10 @@ init();
 	h.appendChild(style);
 })();
 
-},{"../style.css":6}],3:[function(require,module,exports){
+},{"../style.css":6}],6:[function(require,module,exports){
+module.exports = '.vim-container{margin:0;padding:0;position:relative;height:100%;width:100%;border-radius:4px;color:#f4f4f4;background-color:#111;font-size:14px;font-family:"Courier New", Courier, monospace}.vim-container pre,.vim-container span{font-size:inherit}.vim-container .selection{background-color:#555}.vim-container .selection.cursor{background-color:#888;color:#333}.vim-container .gutter{color:#ca792d;font-weight:700}.vim-container .blank{color:#4a39de;font-weight:700}.vim-container .var{color:#c0bb31}';
+
+},{}],3:[function(require,module,exports){
 mousetrap = require('../components/component-mousetrap');
 /** Simple way to listen to keystrokes
 
@@ -221,10 +224,7 @@ Keys.prototype.listen = function(obj) {
 	}.bind(this));
 };
 
-},{"../components/component-mousetrap":7}],6:[function(require,module,exports){
-module.exports = '.vim-container{margin:0;padding:0;position:relative;height:100%;width:100%;border-radius:4px;color:#f4f4f4;background-color:#111;font-size:14px;font-family:"Courier New", Courier, monospace}.vim-container pre,.vim-container span{font-size:inherit}.vim-container .selection{background-color:#555}.vim-container .selection.cursor{background-color:#888;color:#333}.vim-container .gutter{color:#ca792d;font-weight:700}.vim-container .blank{color:#4a39de;font-weight:700}.vim-container .var{color:#c0bb31}';
-
-},{}],5:[function(require,module,exports){
+},{"../components/component-mousetrap":7}],5:[function(require,module,exports){
 /* Nothing to see here */
 module.exports = require('./lib/Vim');
 
@@ -7874,7 +7874,7 @@ function hex2Address(hex) {
 
 module.exports = mauve;
 
-},{"x256":26,"rgb":27}],27:[function(require,module,exports){
+},{"rgb":26,"x256":27}],26:[function(require,module,exports){
 /*
 color
 */"use strict"
@@ -8012,7 +8012,7 @@ color.matches = function(string){
 
 module.exports = color
 
-},{}],26:[function(require,module,exports){
+},{}],27:[function(require,module,exports){
 // colors scraped from
 // http://www.calmar.ws/vim/256-xterm-24bit-rgb-color-chart.html
 // %s/ *\d\+ \+#\([^ ]\+\)/\1\r/g
