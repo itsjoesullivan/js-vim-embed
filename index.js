@@ -27,8 +27,8 @@ var init = function(obj) {
 		vim.view.cols = elView.dimensions[0];
 		if(text.length) {
 			vim.curDoc.text(text);
-			vim.exec('G')
-			vim.exec('$')
+			vim.exec('G');
+			vim.exec('$');
 		}
 	
 	};
