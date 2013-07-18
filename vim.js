@@ -1,3 +1,9 @@
+/*!
+ * js-vim
+ * Copyright(c) 2013 Joe Sullivan <itsjoesullivan@gmail.com>
+ * MIT Licensed
+ */
+
 ;(function(e,t,n){function i(n,s){if(!t[n]){if(!e[n]){var o=typeof require=="function"&&require;if(!s&&o)return o(n,!0);if(r)return r(n,!0);throw new Error("Cannot find module '"+n+"'")}var u=t[n]={exports:{}};e[n][0].call(u.exports,function(t){var r=e[n][1][t];return i(r?r:t)},u,u.exports)}return t[n].exports}var r=typeof require=="function"&&require;for(var s=0;s<n.length;s++)i(n[s]);return i})({1:[function(require,module,exports){
 var View = module.exports = function(obj) {
 	if(!obj) throw "No configuration object";
@@ -120,8 +126,8 @@ var init = function(obj) {
 		vim.view.cols = elView.dimensions[0];
 		if(text.length) {
 			vim.curDoc.text(text);
-			vim.exec('G')
-			vim.exec('$')
+			vim.exec('G');
+			vim.exec('$');
 		}
 	
 	};
@@ -205,6 +211,14 @@ for(var i in mousetrap.SHIFT_MAP) {
 Keys.prototype.listen = function(obj) {
 	addListener(obj,'keydown', function(e) {
 		var key = mousetrap.characterFromEvent(e);
+		if(e.metaKey) return;
+		if(key === 'ctrl') return;
+		var prefix = '',
+			suffix = '';
+		if(e.ctrlKey) {
+			prefix = '<Ctrl-';	
+			suffix = '>';
+		}
 		if(e.shiftKey) {
 			if(key in reverseShiftMap) {
 				key = reverseShiftMap[key];
@@ -217,6 +231,7 @@ Keys.prototype.listen = function(obj) {
 			key = specialChars[key];
 			if(!key || !key.length) return;
 		}
+		key = prefix + key + suffix;
 		this.fn(key);
 	}.bind(this));
 };
@@ -5382,6 +5397,7 @@ var mark = module.exports = function(str, mk) {
 var Event = require('./Event');
 
 var Cursor = function(obj) {
+	"use strict";
 
 	this._line = 0;
 	this._char = 0;
@@ -5447,7 +5463,7 @@ Cursor.prototype.position = function(pos) {
 		line: this.line(),
 		char: this.char(),
 		col: this.col()
-	}
+	};
 };
 
 module.exports = Cursor;
@@ -5500,7 +5516,7 @@ var _lasts = [];
 */
 Doc.prototype.last = function(k, v) {
 	if (v) {
-		return _lasts[k] = v;
+		_lasts[k] = v;
 	}
 	return _lasts[k];
 };
@@ -5537,7 +5553,7 @@ Doc.prototype.text = function(text) {
 			this._lines = this._text.split('\n');
 			this.trigger('change:text');
 		} else if ('length' in text) {
-			return this._lines.slice.apply(this._lines, text).join('\n')
+			return this._lines.slice.apply(this._lines, text).join('\n');
 		}
 	}
 	return this._text;
@@ -5592,8 +5608,8 @@ Doc.prototype.getRange = function(range) {
  */
 Doc.prototype.addMark = function(mk) {
 	if (!mk) return;
-	if (!('line' in mk && 'col' in mk)) throw "bad mark."
-	var markId = (new Date().getTime() + Math.random()).toString(16)
+	if (!('line' in mk && 'col' in mk)) throw "bad mark.";
+	var markId = (new Date().getTime() + Math.random()).toString(16);
 	mk.id = markId;
 	this._marks[mk.mark] = mk;
 	if (mk.mark === '.') return;
@@ -5643,7 +5659,7 @@ Doc.prototype.insert = function(text) {
 		return;
 	}
 
-	var curLine = this.line()
+	var curLine = this.line();
 	var lineBackup = mark(curLine, curLine.marks);
 	curLine = curLine.substring(0, this.cursor.char());
 	if (typeof text.marks !== 'undefined' && typeof curLine.marks === 'undefined') {
@@ -5711,7 +5727,7 @@ Doc.prototype.remove = function(range) {
 	//if the last line is entirely selected, remove it.
 
 	//if the entire 
-	var deleteLastLine = (!range[0].char //range opens at first character of a line
+	var deleteLastLine = (!range[0].char // range opens at first character of a line
 		|| range[0].line < range[1].line) //or range opens above the line it ends on
 	&& range[1].char > this.line(range[1].line).length; //and range extends beyond the characters (into presumed \n)
 
@@ -5720,9 +5736,9 @@ Doc.prototype.remove = function(range) {
 
 	//if the second range goes over and no first half AND not the same line, remove current line
 	if (join && !first.length && range[0].line !== range[1].line) {
-		this._lines.splice(range[0].line, 1)
+		this._lines.splice(range[0].line, 1);
 	} else if (deleteLastLine) {
-		this._lines.splice(range[1].line, 1)
+		this._lines.splice(range[1].line, 1);
 	} else { //otherwise join first and second half and set as line.
 		this._lines[range[0].line] = first.concat(last);
 	}
@@ -5741,14 +5757,14 @@ Doc.prototype.remove = function(range) {
 /* Finds the next instance of that exp, returning a range */
 
 Doc.prototype.find = function(exp, opts) {
-	opts = opts || {},
-	carriage = '',
-	backwards = false,
-	wholeLine = false,
-	// Range here represents how far to look. Defaults to %, all.
-	range = (opts.range || opts.range === false) ? opts.range : '%',
-	offset = 0,
-	inclusive = false;
+	opts = opts || {};
+	var carriage = '',
+		backwards = false,
+		wholeLine = false,
+		// Range here represents how far to look. Defaults to %, all.
+		range = (opts.range || opts.range === false) ? opts.range : '%',
+		offset = 0,
+		inclusive = false;
 
 	if (this.selecting) {
 		carriage = '\n';
@@ -5833,7 +5849,7 @@ Doc.prototype.firstPosition = function() {
 	return {
 		line: 0,
 		char: 0
-	}
+	};
 };
 
 
@@ -5879,7 +5895,10 @@ Doc.prototype.checkString = checkString;
 var _selection = false;
 Doc.prototype.selection = function(range) {
 	//Reset if told
-	if (range === 'reset') return _selection = false;
+	if (range === 'reset') {
+		_selection = false;
+		return;
+	}
 
 	if (range) { //Set
 		_selection = range;
@@ -5908,7 +5927,7 @@ function isRange(range) {
 	if (!range) return false;
 	if (!('length' in range)) return false;
 
-	if (!range.length === 2) return false;
+	if (range.length !== 2) return false;
 
 	//basic structure
 	if ('char' in range[0] && 'line' in range[0] && 'char' in range[1] && 'line' in range[1]) {
@@ -5919,7 +5938,7 @@ function isRange(range) {
 	}
 
 	return true;
-};
+}
 
 /** Check whether a position is a part of the current selection. */
 Doc.prototype.inSelection = function(pos) {
@@ -5928,7 +5947,7 @@ Doc.prototype.inSelection = function(pos) {
 
 Doc.prototype.exec = function() {
 	if ('vim' in this) this.vim.exec.apply(this.vim, arguments);
-}
+};
 
 module.exports = Doc;
 
@@ -6362,7 +6381,130 @@ module.exports.prototype.trigger = function(name, arg1, arg2 /** ... */) {
   return this;
 
 };
-},{}],15:[function(require,module,exports){
+},{}],14:[function(require,module,exports){
+var _ = require('underscore');
+var mark = require('../mark');
+
+module.exports = {
+
+	/* Any time you receive multiple keys in one go */
+	'/^((?!\b|esc)[\\w\\W][\\w\\W]+)$/': function(keys, vim) {
+		for (var i = 0; i < keys.length; i++) {
+			this.exec(keys.substring(i, i + 1));
+		}
+	},
+
+	'/^((?!\b|esc|}).)$/': function(keys, vim, match) {
+		this.currentInsertedText += keys
+		vim.insert(keys);
+	},
+
+	'/^}$/': function() {
+		if (this.rc.smartindent && this.curDoc._lines[this.curDoc.cursor.line()].match(/^\s*$/)) {
+			var ct = this.rc.tabstop;
+			this.exec('esc');
+			while (ct--) {
+				this.exec('X');
+			}
+			this.exec('i');
+		}
+		this.insert('}');
+
+	},
+
+	'/^\n$/': function(keys) {
+		this.currentInsertedText += keys;
+		if (!this.rc.smartindent || this.curDoc._lines[this.curDoc.cursor.line()].length === 0) {
+			this.insert('\n');
+		} else {
+			var thisLine = this.curDoc._lines[this.curDoc.cursor.line()];
+			var indent = thisLine.match(/{\s*(?:\/\/.*|\/\*.*\*\/\s*)?$/);
+			curChar = this.curDoc.cursor.char();
+			var currentText = this.currentInsertedText;
+			this.exec('esc');
+			this.exec('^');
+
+			//Assume you're indenting to the first non-blank char
+			var ct = this.curDoc.cursor.char();
+			//Unless it's all blank, then to zero.
+			if (thisLine.match(/^\s*$/)) {
+				ct = 0;
+			}
+
+			this.curDoc.cursor.char(curChar);
+			this.insert('\n');
+
+			if (indent) {
+				ct += this.rc.tabstop;
+			}
+			this.exec('i');
+			this.currentInsertedText = currentText;
+			while (ct-- > 0) {
+				this.exec(' ');
+			}
+		}
+	},
+
+	'/^(\b)$/': function(keys, vim) {
+		if (this.currentInsertedText.length) this.currentInsertedText = this.currentInsertedText.substring(0, this.currentInsertedText.length - 1);
+		var atZero = !vim.curDoc.cursor.char()
+		vim.exec('esc');
+
+		//Only backspace if there's somewhere to go.
+		if (atZero & !vim.curDoc.cursor.line()) return;
+
+		//Do a join if at the beginning (i.e., deleting a carriage return)		
+		if (atZero && vim.curDoc.cursor.line()) {
+			vim.exec('k');
+			vim.exec('J');
+			vim.exec('x');
+		} else {
+			//Otherwise just erase the character. This works because "esc" from insert decrements the cursor.
+			vim.exec('x');
+		}
+		vim.exec('i');
+	},
+	'/^esc/': function(keys, vim) {
+		//Handle text
+
+		vim.mode('command');
+		vim.exec('h');
+
+		if (this.submode === 'block' & !this.currentInsertedText.match(/\n/)) {
+			this.submode = '';
+			var lastText = this.currentInsertedText;
+			//For each line that was a part of that block selection
+			var meaningfulSelection = this.lastSelection.slice(1);
+			_(meaningfulSelection).each(function(range) {
+				//Move to the beginning of the selection on that line
+				if (this.submodeVerb === 'I') {
+					this.curDoc.cursor.position(range[0]);
+					this.exec('i');
+				} else if (this.submodeVerb === 'A') {
+					var newPos = range[1];
+					newPos.char--;
+					newPos.col--;
+					this.curDoc.cursor.position(range[1]);
+					this.exec('a');
+				}
+				this.exec(lastText);
+				this.exec('esc');
+			}, this);
+			this.curDoc.cursor.position(this.lastSelection[0][0]);
+
+		}
+
+		this.register('.', this.currentInsertedText);
+		this.currentInsertedText = this.currentInsertedText.substring(0, 0);
+
+
+
+	},
+
+
+};
+
+},{"../mark":11,"underscore":18}],15:[function(require,module,exports){
 var _ = require('underscore');
 
 module.exports = {
@@ -6399,7 +6541,7 @@ module.exports = {
 		var visualMode = 'v';
 
 		//Certain ops assume you're in visual line mode
-		if (['gg', 'G', 'j', 'k', '-', '+'].indexOf(motion) > -1) {
+		if (motion.match(/gg|G|j|k|-|\+/)) {
 			visualMode = 'V';
 		}
 
@@ -6769,7 +6911,7 @@ module.exports = {
 		this.exec('v');
 	},
 
-	'/^<C-v>$/': function() {
+	'/^<Ctrl-v>$/': function() {
 		this.submode = 'block';
 		this.exec('v');
 	},
@@ -7173,130 +7315,7 @@ module.exports = {
 
 }
 
-},{"underscore":18}],14:[function(require,module,exports){
-var _ = require('underscore');
-var mark = require('../mark');
-
-module.exports = {
-
-	/* Any time you receive multiple keys in one go */
-	'/^((?!\b|esc)[\\w\\W][\\w\\W]+)$/': function(keys, vim) {
-		for (var i = 0; i < keys.length; i++) {
-			this.exec(keys.substring(i, i + 1));
-		}
-	},
-
-	'/^((?!\b|esc|}).)$/': function(keys, vim, match) {
-		this.currentInsertedText += keys
-		vim.insert(keys);
-	},
-
-	'/^}$/': function() {
-		if (this.rc.smartindent && this.curDoc._lines[this.curDoc.cursor.line()].match(/^\s*$/)) {
-			var ct = this.rc.tabstop;
-			this.exec('esc');
-			while (ct--) {
-				this.exec('X');
-			}
-			this.exec('i');
-		}
-		this.insert('}');
-
-	},
-
-	'/^\n$/': function(keys) {
-		this.currentInsertedText += keys;
-		if (!this.rc.smartindent || this.curDoc._lines[this.curDoc.cursor.line()].length === 0) {
-			this.insert('\n');
-		} else {
-			var thisLine = this.curDoc._lines[this.curDoc.cursor.line()];
-			var indent = thisLine.match(/{\s*(?:\/\/.*|\/\*.*\*\/\s*)?$/);
-			curChar = this.curDoc.cursor.char();
-			var currentText = this.currentInsertedText;
-			this.exec('esc');
-			this.exec('^');
-
-			//Assume you're indenting to the first non-blank char
-			var ct = this.curDoc.cursor.char();
-			//Unless it's all blank, then to zero.
-			if (thisLine.match(/^\s*$/)) {
-				ct = 0;
-			}
-
-			this.curDoc.cursor.char(curChar);
-			this.insert('\n');
-
-			if (indent) {
-				ct += this.rc.tabstop;
-			}
-			this.exec('i');
-			this.currentInsertedText = currentText;
-			while (ct-- > 0) {
-				this.exec(' ');
-			}
-		}
-	},
-
-	'/^(\b)$/': function(keys, vim) {
-		if (this.currentInsertedText.length) this.currentInsertedText = this.currentInsertedText.substring(0, this.currentInsertedText.length - 1);
-		var atZero = !vim.curDoc.cursor.char()
-		vim.exec('esc');
-
-		//Only backspace if there's somewhere to go.
-		if (atZero & !vim.curDoc.cursor.line()) return;
-
-		//Do a join if at the beginning (i.e., deleting a carriage return)		
-		if (atZero && vim.curDoc.cursor.line()) {
-			vim.exec('k');
-			vim.exec('J');
-			vim.exec('x');
-		} else {
-			//Otherwise just erase the character. This works because "esc" from insert decrements the cursor.
-			vim.exec('x');
-		}
-		vim.exec('i');
-	},
-	'/^esc/': function(keys, vim) {
-		//Handle text
-
-		vim.mode('command');
-		vim.exec('h');
-
-		if (this.submode === 'block' & !this.currentInsertedText.match(/\n/)) {
-			this.submode = '';
-			var lastText = this.currentInsertedText;
-			//For each line that was a part of that block selection
-			var meaningfulSelection = this.lastSelection.slice(1);
-			_(meaningfulSelection).each(function(range) {
-				//Move to the beginning of the selection on that line
-				if (this.submodeVerb === 'I') {
-					this.curDoc.cursor.position(range[0]);
-					this.exec('i');
-				} else if (this.submodeVerb === 'A') {
-					var newPos = range[1];
-					newPos.char--;
-					newPos.col--;
-					this.curDoc.cursor.position(range[1]);
-					this.exec('a');
-				}
-				this.exec(lastText);
-				this.exec('esc');
-			}, this);
-			this.curDoc.cursor.position(this.lastSelection[0][0]);
-
-		}
-
-		this.register('.', this.currentInsertedText);
-		this.currentInsertedText = this.currentInsertedText.substring(0, 0);
-
-
-
-	},
-
-
-};
-
-},{"../mark":11,"underscore":18}],16:[function(require,module,exports){
+},{"underscore":18}],16:[function(require,module,exports){
 (function(){var _ = require('underscore');
 var mark = require('../mark');
 
@@ -7482,7 +7501,7 @@ module.exports = {
 				newSelection[i][1] = newEnd;
 			});
 			this.exec('d');
-			this.exec('<C-v>');
+			this.exec('<Ctrl-v>');
 			this.curDoc.selection(newSelection);
 			this.exec('I');
 			return;
