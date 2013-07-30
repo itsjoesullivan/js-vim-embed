@@ -11,7 +11,7 @@ require('./lib/style');
 /* set up */
 var init = function(obj) {
 
-	//Instanciate
+	//Instantiate
 	window.vim = new Vim();
 	var elView;
 
