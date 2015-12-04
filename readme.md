@@ -5,7 +5,7 @@ Embed js-vim on any web page
 ##Usage
 
 ```html
-<!DOCYPE html>
+<!DOCTYPE html>
 <html>
 <head>
 </head>
